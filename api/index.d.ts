@@ -24,6 +24,30 @@ export declare module RV {
         /** Creates a new map inside of the given HTML container, which is typically a DIV element. */
         constructor(mapDiv: HTMLElement, opts?: MapOptions);
 
+        /**
+         * Contains UI related functionality.
+         * 
+         * @example #### Adding data tags on the side menu buttons for Google tag manager integration <br><br>
+         * 
+         * ```js
+         * $(mapInstance.ui.anchors.SIDE_MENU.GROUPS).find('button').each(function(node) {
+         *     node.data('google-tag', '');
+         * });
+         * ```
+         * 
+         * @example #### Opening the left side menu panel<br><br>
+         * 
+         * ```js
+         * mapInstance.ui.panels.getById('sideMenu').open();
+         * ```
+         * 
+         * @example #### Adding a map control button<br><br>
+         * ```js
+         * var controlDiv = document.createElement('div');
+         * controlDiv.style.backgroundColor = '#fff'; // style as needed
+         * $(mapInstance.ui.anchors.MAP_CONTROLS).appendChild(controlDiv);
+         * ```
+         */
         ui: {
             anchors: UI.anchorPoints;
             panels: UI.PanelRegistry;
@@ -471,33 +495,7 @@ export declare module RV {
         }
     }
 
-
-    
-
-    /**
-     * Uses the `RV.UI` namespace. Contains UI related functionality which is not strictly map related.
-     * 
-     * @example #### Adding data tags on the side menu buttons for Google tag manager integration <br><br>
-     * 
-     * ```js
-     * $(RV.UI.AnchorPoints.SIDE_MENU.GROUPS).find('button').each(function(node) {
-     *     node.data('google-tag', '');
-     * });
-     * ```
-     * 
-     * @example #### Opening the left side menu panel<br><br>
-     * 
-     * ```js
-     * RV.UI.Panels.getById('sideMenu').open();
-     * ```
-     * 
-     * @example #### Adding a map control button<br><br>
-     * ```js
-     * var controlDiv = document.createElement('div');
-     * controlDiv.style.backgroundColor = '#fff'; // style as needed
-     * $(RV.UI.AnchorPoints.MAP_CONTROLS).appendChild(controlDiv);
-     * ```
-     */
+    /** Defines UI component classes and interfaces. */
     export module UI {
 
         /**
@@ -506,15 +504,13 @@ export declare module RV {
          * ```js
          * var myBasemap = new RV.UI.Basemap('My Custom Basemap', 'A personal favorite of mine.', [myLayer1, myLayer2]);
          * myBasemap.setActive(true); // make active so it is displayed when added.
-         * mapInstance.basemaps.push(myBasemap);
+         * mapInstance.set('basemaps', myBasemap);
          * ```
-         * 
-         * Note that whenever passing string layer ids in place of Layer instances they will be converted to Layer instances automatically.
          * 
          * @example <br><br>
          * 
          * ```js
-         * var firstBasemap = mapInstance.ui.basemaps.getAt(0);
+         * var firstBasemap = mapInstance.ui.basemaps.getLayerById(0);
          * firstBasemap.addListener('active_changed', function(isActive) {
          *     if (isActive) {
          *         firstBasemap.setName('Active Basemap');
