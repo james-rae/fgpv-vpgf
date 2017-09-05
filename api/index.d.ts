@@ -11,60 +11,6 @@
  */
 
 export declare module RV {
-    /**
-     * Defines a basemap which is selectable from the basemap panel once added to the map. For example:
-     * 
-     * ```js
-     * var myBasemap = new RV.Basemap('My Custom Basemap', 'A personal favorite of mine.', [myLayer1, myLayer2]);
-     * myBasemap.setActive(true); // make active so it is displayed when added.
-     * mapInstance.basemaps.push(myBasemap);
-     * ```
-     * 
-     * Note that whenever passing string layer ids in place of Layer instances they will be converted to Layer instances automatically.
-     * 
-     * @example <br><br>
-     * 
-     * ```js
-     * var firstBasemap = mapInstance.basemaps.getAt(0);
-     * firstBasemap.addListener('active_changed', function(isActive) {
-     *     if (isActive) {
-     *         firstBasemap.setName('Active Basemap');
-     *     }
-     * });
-     * ```
-     */
-    export class Basemap extends MVCObject {
-        /** @param layers - string values must be layer ids as defined in the configuration. Use Layer instances in most cases. */
-        constructor(name: string, layers: Array<Data.Layer> | Array<string> | Data.Layer | string, description?: string);
-        getName(): string;
-        setName(name: string): void;
-        getDescription(): string;
-        setDescription(desc: string): void;
-        /** Returns true if this basemap is currently shown on the map. */
-        isActive(): boolean;
-        setActive(active: boolean): void;
-        /** Derived from the layer projections that compose this basemap. You cannot set a projection. */
-        getProjection(): Projection;
-        
-        /**
-         * @event name_changed
-         * @property {string} name - The new name
-         */
-        name_changed: Event;
-
-        /**
-         * @event description_changed
-         * @property {string} description - The new description
-         */
-        description_changed: Event;
-
-        /**
-         * @event active_changed
-         * @property {string} isActive
-         */
-        active_changed: Event;
-    }
-
     /** A map instance is needed for every map on the page. To display `x` number of maps at the same time, you'll need `x` number of map instances,
      * with separate div containers for each one.
      * 
@@ -78,22 +24,25 @@ export declare module RV {
         /** Creates a new map inside of the given HTML container, which is typically a DIV element. */
         constructor(mapDiv: HTMLElement, opts?: MapOptions);
 
-        basemaps: MVCArray<Basemap>;
+        ui: {
+            anchors: UI.anchorPoints;
+            panels: UI.PanelRegistry;
+            legend: UI.LegendEntry;
+            basemaps: UI.Basemap;
+        };
 
         /** 
-         * The `data` object is a collection of Layers. 
-         * 
-         * Every Map has a `data` object by default, so there is no need to initialize one.
+         * Every Map has a `layers` object by default, so there is no need to initialize one - even if the map has no layers.
          * 
          * @example #### Add geoJSON & getting a layer by its ID <br><br>
          * 
          * ```js
          * var mapInstance = new RV.Map(...);
-         * mapInstance.data.addGeoJson(...);
-         * mapInstance.data.getLayerById(...); 
+         * mapInstance.layers.addGeoJson(...);
+         * mapInstance.layers.getLayerById(...); 
          * ```
          */
-        data: Data.DataRegistry;
+        layers: LAYER.LayerGroup;
 
         /** Returns the position displayed at the center of the map.  */
         setCenter(latlng: LatLng | LatLngLiteral) : void;
@@ -152,12 +101,6 @@ export declare module RV {
          * @property {number} zoom
          */
         zoom_changed: Event;
-
-        /** 
-         * This event is fired when the legend type changes from auto to structured or vice-versa.
-         * @event legend_changed
-         */
-        legend_changed: Event;
     }
 
     /** A LatLngBounds instance represents a rectangle in geographical coordinates. */
@@ -345,160 +288,68 @@ export declare module RV {
         set_at: Event;
     }
 
-    /**
-     * Map data is a collection of layers. 
-     * 
-     * @todo Discuss how the use of a standard layer integrates with our internal implementation of multiple layer types. <br><br>
-     * 
-     * There is only one type of layer. Each layer can have differing geometry ("Points", "Lines" etc).
-     */
-    export module Data {
+    export class Layer {
+        /** 
+         * Repeatedly invokes the given function, passing a property value and name on each invocation. 
+         * The order of iteration through the properties is undefined.
+         * */
+        forEachProperty(callback: (any, string) => void);
+        /** Returns the layer's geometry. */
+        getGeometry(): Geometry;
+        /** Returns the layer ID. */
+        getId(): number | string | undefined;
+        /** Returns the value of the requested property, or undefined if the property does not exist. */
+        getProperty(name: string): any;
+        /** Removes the property with the given name. */
+        removeProperty(name: string): void;
+        /** Sets the layer's geometry. */
+        setGeometry(newGeometry: Geometry | LatLng | LatLngLiteral);
+        /** Sets the value of the specified property. If newValue is undefined this is equivalent to calling removeProperty. */
+        setProperty(name: string, newValue: any);
+        /** Exports the layer to a GeoJSON object. */
+        toGeoJson(callback: (obj: Object) => void);
+        /** Returns the opacity of the layer on the map from 0 (hidden) to 100 (fully visible) */
+        getOpacity(): number;
+        /** Sets the opacity value. */
+        setOpacity(opacity: number): void;
 
-        export class DataRegistry extends MVCObject {
-            /** Adds a layer to the collection, and returns the added layer.
-             * 
-             * If the layer has an ID, it will replace any existing layer in the collection with the same ID. If no layer or JSON is given, a new layer will be created with null geometry and no properties.
-             * 
-             * Note that the IDs 1234 and '1234' are equivalent. Adding a layer with ID 1234 will replace a layer with ID '1234', and vice versa.
-             */
-            add(layer?: Data.Layer | JSON): Data.Layer;
-            /** Adds GeoJSON layers to the collection. Give this method a parsed JSON. The imported layers are returned. Throws an exception if the GeoJSON could not be imported. */
-            addGeoJson(geoJson: Object): Array<Data.Layer>;
-            /** Checks whether the given layer is in the collection. */
-            contains(layer: Data.Layer): boolean;
-            /** Repeatedly invokes the given function, passing a layer in the collection to the function on each invocation. The order of iteration through the layers is undefined. */
-            forEach(callback: (layer: Data.Layer) => void);
-            /** Returns the layer with the given ID, if it exists in the collection. Otherwise returns undefined.
-             * 
-             * Note that the IDs 1234 and '1234' are equivalent. Either can be used to look up the same layer.
-             */
-            getLayerById(id: number | string): Data.Layer | undefined;
-            /** Loads GeoJSON from a URL, and adds the layers to the collection. */
-            loadGeoJson(url: string, callback?: (data: Array<Data.Layer>) => void): void;
-            /** Removes a layer from the collection. */
-            remove(layer: Data.Layer): void;
-            /** Exports the layers in the collection to a GeoJSON object. */
-            toGeoJson(callback: (object: Object) => void);
-    
-            /** 
-             * This event is fired when a layer is added to the collection.
-             * @event addlayer
-             * @property {Data.Layer} layer
-             */
-            addlayer: Event;
-    
-            /** 
-             * This event is fired when a layer is removed to the collection.
-             * @event removelayer
-             * @property {Data.Layer} layer
-             */
-            removelayer: Event;
-    
-            /** 
-             * This event is fired for a click on the geometry.
-             * @event click
-             * @property {Event.MouseEvent} event
-             */
-            click: Event;
-    
-            /** 
-             * This event is fired when a layer's geometry is set.
-             * @event setgeometry
-             * @property {Data.Layer} layer
-             * @property {Data.Geometry} newGeometry
-             * @property {Data.Geometry} oldGeometry
-             */
-            setgeometry: Event;
-    
-            /** 
-             * This event is fired when a layer's property is set.
-             * @event setproperty
-             * @property {Data.Layer} layer
-             * @property {string} name - the property name
-             * @property {any} newValue
-             * @property {any} oldValue - The previous value. Will be undefined if the property was added.
-             */
-            setproperty: Event;
-    
-            /** 
-             * This event is fired when a layer's property is removed.
-             * @event removeproperty
-             * @property {Data.Layer} layer
-             * @property {string} name - the property name
-             * @property {any} oldValue
-             */
-            removeproperty: Event;
-        }
-        
-        export class Layer {
-            /**
-             * You may pass a schema valid layer config json snippet which will get loaded into this newly created instance.
-             * 
-             * Note that this operation is not syncronous, and you should listen on `setgeometry` or `setproperty` to know this instance is ready.
-             * 
-             * If the constructor argument is undefined, an empty instance is created.
-             * 
-             * @param configSnippet 
-             */
-            constructor(configSnippet: JSON | undefined);
-            /** 
-             * Repeatedly invokes the given function, passing a property value and name on each invocation. 
-             * The order of iteration through the properties is undefined.
-             * */
-            forEachProperty(callback: (any, string) => void);
-            /** Returns the layer's geometry. */
-            getGeometry(): Geometry;
-            /** Returns the layer ID. */
-            getId(): number | string | undefined;
-            /** Returns the value of the requested property, or undefined if the property does not exist. */
-            getProperty(name: string): any;
-            /** Removes the property with the given name. */
-            removeProperty(name: string): void;
-            /** Sets the layer's geometry. */
-            setGeometry(newGeometry: Geometry | LatLng | LatLngLiteral);
-            /** Sets the value of the specified property. If newValue is undefined this is equivalent to calling removeProperty. */
-            setProperty(name: string, newValue: any);
-            /** Exports the layer to a GeoJSON object. */
-            toGeoJson(callback: (obj: Object) => void);
-            /** Returns the opacity of the layer on the map from 0 (hidden) to 100 (fully visible) */
-            getOpacity(): number;
-            /** Sets the opacity value. */
-            setOpacity(opacity: number): void;
+        /** 
+         * This event is triggered when a property is removed.
+         * @event removeproperty
+         */
+        removeproperty
 
-            /** 
-             * This event is triggered when a property is removed.
-             * @event removeproperty
-             */
-            removeproperty
+        /** 
+         * This event is triggered when a geometry is set.
+         * @event setgeometry
+         */
+        setgeometry
 
-            /** 
-             * This event is triggered when a geometry is set.
-             * @event setgeometry
-             */
-            setgeometry
+        /** 
+         * This event is triggered when a property is set.
+         * @event setproperty
+         */
+        setproperty
 
-            /** 
-             * This event is triggered when a property is set.
-             * @event setproperty
-             */
-            setproperty
+        /** 
+         * This event is triggered when the opacity changes.
+         * @event setproperty
+         */
+        opacity_changed
+    }
 
-            /** 
-             * This event is triggered when the opacity changes.
-             * @event setproperty
-             */
-            opacity_changed
-        }
+    export class Geometry {
+        /** Repeatedly invokes the given function, passing a point from the geometry to the function on each invocation. */
+        forEachLatLng(callback: (latLng: LatLng) => void)
+        /** Returns the type of the geometry object. Possibilities are "Point", "MultiPoint", "LineString", or "MultiLineString". */
+        getType(): string;
+    }
 
-        export class Geometry {
-            /** Repeatedly invokes the given function, passing a point from the geometry to the function on each invocation. */
-            forEachLatLng(callback: (latLng: LatLng) => void)
-            /** Returns the type of the geometry object. Possibilities are "Point", "MultiPoint", "LineString", or "MultiLineString". */
-            getType(): string;
-        }
+
+    export module LAYER {
         /** A Point geometry contains a single LatLng. */
         export class Point extends Geometry {
-            /** Constructs a Data.Point from the given LatLng or LatLngLiteral. */
+            /** Constructs a Point from the given LatLng or LatLngLiteral. */
             constructor(latLng: LatLng | LatLngLiteral);
             /** Returns the contained LatLng. */
             get(): LatLng;
@@ -542,7 +393,86 @@ export declare module RV {
             /** Returns the string "MultiLineString". */
             getType(): string;
         }
+
+        export class LayerGroup extends MVCObject {
+            /** Adds the provided layer to the group, and returns the added layer.
+             * 
+             * If the layer has an ID, it will replace any existing layer in the collection with the same ID. If no layer or JSON is given, a new layer will be created with null geometry and no properties.
+             * 
+             * Note that the IDs 1234 and '1234' are equivalent. Adding a layer with ID 1234 will replace a layer with ID '1234', and vice versa.
+             */
+            add(layer?: Layer): Layer;
+            /** Adds GeoJSON layers to the collection. Give this method a parsed JSON. The imported layers are returned. Throws an exception if the GeoJSON could not be imported. */
+            addGeoJson(geoJson: Object): Array<Layer>;
+            /** Checks whether the given layer is in the collection. */
+            contains(layer: Layer): boolean;
+            /** Repeatedly invokes the given function, passing a layer in the collection to the function on each invocation. The order of iteration through the layers is undefined. */
+            forEach(callback: (layer: Layer) => void);
+            /** Returns the layer with the given ID, if it exists in the collection. Otherwise returns undefined.
+             * 
+             * Note that the IDs 1234 and '1234' are equivalent. Either can be used to look up the same layer.
+             */
+            getLayerById(id: number | string): Layer | undefined;
+            /** Loads GeoJSON from a URL, and adds the layers to the collection. */
+            loadGeoJson(url: string, callback?: (layers: Array<Layer>) => void): void;
+            /** Removes a layer from the collection. */
+            remove(layer: Layer): void;
+            /** Exports the layers in the collection to a GeoJSON object. */
+            toGeoJson(callback: (object: Object) => void);
+
+            /** 
+             * This event is fired when a layer is added to the collection.
+             * @event addlayer
+             * @property {Layer} layer
+             */
+            addlayer: Event;
+
+            /** 
+             * This event is fired when a layer is removed to the collection.
+             * @event removelayer
+             * @property {Layer} layer
+             */
+            removelayer: Event;
+
+            /** 
+             * This event is fired for a click on the geometry.
+             * @event click
+             * @property {Event.MouseEvent} event
+             */
+            click: Event;
+
+            /** 
+             * This event is fired when a layer's geometry is set.
+             * @event setgeometry
+             * @property {Layer} layer
+             * @property {Geometry} newGeometry
+             * @property {Geometry} oldGeometry
+             */
+            setgeometry: Event;
+
+            /** 
+             * This event is fired when a layer's property is set.
+             * @event setproperty
+             * @property {Layer} layer
+             * @property {string} name - the property name
+             * @property {any} newValue
+             * @property {any} oldValue - The previous value. Will be undefined if the property was added.
+             */
+            setproperty: Event;
+
+            /** 
+             * This event is fired when a layer's property is removed.
+             * @event removeproperty
+             * @property {Layer} layer
+             * @property {string} name - the property name
+             * @property {any} oldValue
+             */
+            removeproperty: Event;
+        }
     }
+
+
+    
 
     /**
      * Uses the `RV.UI` namespace. Contains UI related functionality which is not strictly map related.
@@ -570,8 +500,61 @@ export declare module RV {
      */
     export module UI {
 
+        /**
+         * Defines a basemap which is selectable from the basemap panel once added to the map. For example:
+         * 
+         * ```js
+         * var myBasemap = new RV.UI.Basemap('My Custom Basemap', 'A personal favorite of mine.', [myLayer1, myLayer2]);
+         * myBasemap.setActive(true); // make active so it is displayed when added.
+         * mapInstance.basemaps.push(myBasemap);
+         * ```
+         * 
+         * Note that whenever passing string layer ids in place of Layer instances they will be converted to Layer instances automatically.
+         * 
+         * @example <br><br>
+         * 
+         * ```js
+         * var firstBasemap = mapInstance.ui.basemaps.getAt(0);
+         * firstBasemap.addListener('active_changed', function(isActive) {
+         *     if (isActive) {
+         *         firstBasemap.setName('Active Basemap');
+         *     }
+         * });
+         * ```
+         */
+        export class Basemap extends LAYER.LayerGroup {
+            constructor(name: string, layers: Array<Layer> | Layer, description?: string);
+            getName(): string;
+            setName(name: string): void;
+            getDescription(): string;
+            setDescription(desc: string): void;
+            /** Returns true if this basemap is currently shown on the map. */
+            isActive(): boolean;
+            setActive(active: boolean): void;
+            /** Derived from the layer projections that compose this basemap. You cannot set a projection. */
+            getProjection(): Projection;
+            
+            /**
+             * @event name_changed
+             * @property {string} name - The new name
+             */
+            name_changed: Event;
+
+            /**
+             * @event description_changed
+             * @property {string} description - The new description
+             */
+            description_changed: Event;
+
+            /**
+             * @event active_changed
+             * @property {string} isActive
+             */
+            active_changed: Event;
+        }
+
         /** Dom nodes for places of interest around the viewer for easier selector location. */
-        export const anchorPoints: {
+        export interface anchorPoints {
             /** The side menu slide out panel */
             SIDE_MENU: {
                 TITLE_IMAGE: Node;
@@ -587,11 +570,7 @@ export declare module RV {
             LEGEND_BAR: Node;
             /** Main legend section containing legend items */
             LEGEND: Node;
-        };
-
-        export const panels: PanelRegistry;
-
-        export const legend: LegendEntry;
+        }
 
         /**
          * @todo Discuss if we should add more panel locations?
@@ -636,7 +615,7 @@ export declare module RV {
              * @property {Event.StoppableEvent} event
              * @property {Node} content
              */
-            opening: Event.StoppableEvent;
+            opening: EVENT.StoppableEvent;
 
             /** 
              * This event is fired before a panel starts to close. Calling `event.stop()` prevents the panel from closing.
@@ -644,7 +623,7 @@ export declare module RV {
              * @property {Panel} Panel
              * @property {Event.StoppableEvent} event
              */
-            closing: Event.StoppableEvent;
+            closing: EVENT.StoppableEvent;
         }
 
         /**
@@ -683,21 +662,21 @@ export declare module RV {
              * @property {Event.StoppableEvent} event
              * @property {Node} content
              */
-            opening: Event.StoppableEvent;
+            opening: EVENT.StoppableEvent;
 
             /** 
              * This event is fired before the panel starts to close. Calling `event.stop()` prevents the panel from closing.
              * @event closing
              * @property {Event.StoppableEvent} event
              */
-            closing: Event.StoppableEvent;
+            closing: EVENT.StoppableEvent;
         }
 
         export class LegendEntry {
             /** Displayed as the entry title in the legend.  */
             setTitle(title: string): void;
             /** Adds an entry to this legend block. */
-            add(member: Data.DataRegistry | Node | LegendEntry): void;
+            add(member: RV.LAYER.LayerGroup | Node | LegendEntry): void;
             /** Returns the dom node containing this legend entry. */
             getNode(): Node;
         }
@@ -713,7 +692,7 @@ export declare module RV {
      * RV.Event.addListener(mapInstance, 'bounds_changed', function() {...});
      * ```
      */
-    export module Event {
+    export module EVENT {
         /** Cross browser event handler registration. This listener is removed by calling removeListener(handle) for the handle that is returned by this function. */
         export function addDomListener(instance: Object, eventName: string, handler: Function, capture?: boolean): MapsEventListener;
         /** Wrapper around addDomListener that removes the listener after the first event. */

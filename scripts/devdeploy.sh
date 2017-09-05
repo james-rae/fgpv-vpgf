@@ -25,9 +25,4 @@ if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
     echo "Destintation: $DESTDIR"
     ssh "$SSHSRV" rm -f -r "$DESTDIR"
     ssh "$SSHSRV" mkdir -p "$DESTDIR/dist"
-    npm run build -- --env.prod
-    rsync --delete-before -r "build/" "$SSHSRV:$DESTDIR/prod"
-    rsync --delete-before -r "dist/" "$SSHSRV:$DESTDIR/dist"
-    npm run build
-    rsync --delete-before -r "build/" "$SSHSRV:$DESTDIR/dev"
 fi
