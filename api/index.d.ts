@@ -1,4 +1,124 @@
 /**
+ * 
+ * #### Introduction
+ * 
+ * The API is available through the global `RV` namespace, after the `rv-main.js` file is added to the host page.
+ * 
+ * ```html
+ * <html>
+ * <head>
+ * <!-- load any css -->
+ * </head>
+ * <body>
+ *     <div id="myMap"></div>
+ *     <script src="rv-main.js" />
+ *     <script>
+ *         // lets initialize our map
+ *         const mapInstance = new RV.Map(document.getElementById('myMap'), 'mapConfig.json');
+ *     </script>
+ * </body>
+ * </html>
+ * ```
+ * 
+ * We should see a map pop-up on the screen, but this won't work. The API may not be ready by the time the javascript engine reaches our
+ * custom script tag. So, we initalize our code inside a function that is guaranteed to be available even if the API isn't, and is invoked
+ * when the API is ready:
+ * 
+ * ```js
+ * // lets initialize our map
+ * RV.onReady(function() {
+ *     const mapInstance = new RV.Map(document.getElementById('myMap'), 'mapConfig.json');
+ * });
+ * ```
+ * <br>
+ * #### LayerGroups & Layers
+ * 
+ * The final design of what exactly a layer will be is yet to be determined - so there will be some magic hand waving in some places to illustrate 
+ * how layers in a general sense are handled.
+ * 
+ * Layers so far have:
+ *     - geometry -> things that are visualized on the map
+ *     - properties -> data, like those found in a data table
+ *     - settings -> for things like opacity
+ * 
+ * Layers will in most cases reside in a `LayerGroup` - a fancy version of an array with special properties and events to make handling many of them easier.
+ * 
+ * ```js
+ * // lets create two layers with my magic wand
+ * const myLayer1 = new MagicLayer();
+ * const myLayer2 = new MagicLayer();
+ * 
+ * const layerGroup1 = new RV.LAYER.LayerGroup();
+ * layerGroup1.add(myLayer1);
+ * layerGroup1.add(myLayer2);
+ * ```
+ * 
+ * Pretty boring so far. How about we open an external data table whenever a layer has data to show (again with a lot of magic)?
+ * 
+ * ```js
+ * layerGroup1.addListener('properties_loaded', function(layerName, properties) {
+ *     magicDatatable.open(properties);
+ * });
+ * 
+ * myLayer2.setProperties([{objectid: 1, title: 'A Title'}, {objectid: 2, title: 'Another Title'}]);
+ * ```
+ * <br>
+ * #### Using layerGroups
+ * 
+ * A `layerGroup` can define the list of available basemaps, layers on a map, or in a legend. Lets add a layer to the map and show it in the legend
+ * 
+ * ```js
+ * // show on the map
+ * mapInstance.layers.add(myLayer2);
+ * myLayer2.setOpacity(0); // where did it go? It's hidden!
+ * myLayer2.setOpacity(70); // that's better
+ * 
+ * // Its not yet in the legend, lets add it
+ * const specificLegendEntry = mapInstance.ui.legend.getById('legendGroup1');
+ * specificLegendEntry.add(myLayer2);
+ * 
+ * // And lets add a custom element after it, just because we can...
+ * var legendDiv = document.createElement('div');
+ * $(legendDiv).html('Some text...');
+ * specificLegendEntry.add(legendDiv);
+ * ```
+ * 
+ * The process is similar with basemaps.
+ * 
+ * #### UI control
+ * 
+ * We can open and close panels like:
+ * 
+ * ```js
+ * mapInstance.ui.panels.getById('left').open();
+ * ```
+ * 
+ * Of course we would be opening an empty panel. Lets try this again:
+ * ```js
+ * mapInstance.ui.panels.addListener('opened', function(panel) {
+ *     if (panel.getId() === 'left')
+ *         panel.setContent(aDivNode);
+ * });
+ * 
+ * mapInstance.ui.panels.getById('left').open();
+ * ```
+ * 
+ * We can also stop panels from opening or closing by listening to the `opening` and `closing` events like so:
+ * 
+ * ```js
+ * mapInstance.ui.panels.addListener('closing', function(panel, event) {
+ *     if (panel.getId() === 'left')
+ *         event.stop();
+ * });
+ * ```
+ * 
+ * Apart from that, `mapInstance.ui.anchors` provides dom nodes of common places in the viewer you may want to edit or add.
+ * Adding a custom map control is easy:
+ * 
+ * ```js
+ * $(mapInstance.ui.anchors.MAP_CONTROLS).append('<div>my control</div>');
+ * ```
+ * <br>
  * #### Event based with MVCObject & MVCArray
  * 
  * Both API users and our backend API implementation will rely on events to signal changes. When a user changes certain properties in the API
@@ -21,8 +141,10 @@ export declare module RV {
      * ```
      */
     export class Map extends MVCObject {
-        /** Creates a new map inside of the given HTML container, which is typically a DIV element. */
-        constructor(mapDiv: HTMLElement, opts?: MapOptions);
+        /** Creates a new map inside of the given HTML container, which is typically a DIV element. 
+         * If opts is a string then it is considered to be a url to a json config snippet of a map.
+        */
+        constructor(mapDiv: HTMLElement, opts?: Object | JSON | string);
 
         /**
          * Contains UI related functionality.
@@ -166,14 +288,6 @@ export declare module RV {
         south: number;
         /** West longitude in degrees. */
         west: number;
-    }
-
-    export interface MapOptions {
-        zoomControl: boolean;
-        fullscreenControl: boolean;
-        geoLocationControl: boolean;
-        helpCtonrol: boolean;
-        homeControl: boolean;
     }
 
     export interface Projection {
@@ -330,6 +444,8 @@ export declare module RV {
         setGeometry(newGeometry: Geometry | LatLng | LatLngLiteral);
         /** Sets the value of the specified property. If newValue is undefined this is equivalent to calling removeProperty. */
         setProperty(name: string, newValue: any);
+        /** Sets the value of the specified properties. Same as calling setProperty repeatedly, but also triggers the properties_loaded event*/
+        setProperties(name: string, newValue: any);
         /** Exports the layer to a GeoJSON object. */
         toGeoJson(callback: (obj: Object) => void);
         /** Returns the opacity of the layer on the map from 0 (hidden) to 100 (fully visible) */
@@ -341,25 +457,33 @@ export declare module RV {
          * This event is triggered when a property is removed.
          * @event removeproperty
          */
-        removeproperty
+        removeproperty: Event;
 
         /** 
          * This event is triggered when a geometry is set.
          * @event setgeometry
          */
-        setgeometry
+        setgeometry: Event;
 
         /** 
          * This event is triggered when a property is set.
          * @event setproperty
+         * 
          */
-        setproperty
+        setproperty: Event;
+
+         /** 
+         * This event is fired when a set of layer property is set.
+         * @event setproperty
+         * @property {object} properties - key-value pair of the set values
+         */
+        properties_loaded: Event;
 
         /** 
          * This event is triggered when the opacity changes.
          * @event setproperty
          */
-        opacity_changed
+        opacity_changed: Event;
     }
 
     export class Geometry {
@@ -483,6 +607,14 @@ export declare module RV {
              * @property {any} oldValue - The previous value. Will be undefined if the property was added.
              */
             setproperty: Event;
+
+            /** 
+             * This event is fired when a set of layer property is set.
+             * @event setproperty
+             * @property {Layer} layer
+             * @property {object} properties - key-value pair of the set values
+             */
+            properties_loaded: Event;
 
             /** 
              * This event is fired when a layer's property is removed.
@@ -669,12 +801,18 @@ export declare module RV {
         }
 
         export class LegendEntry {
+
+            constructor(id: string, title?: string);
             /** Displayed as the entry title in the legend.  */
             setTitle(title: string): void;
             /** Adds an entry to this legend block. */
             add(member: RV.LAYER.LayerGroup | Node | LegendEntry): void;
             /** Returns the dom node containing this legend entry. */
             getNode(): Node;
+            /** Returns any descendents of this legend entry */
+            getMembers(): RV.LAYER.LayerGroup | Node | LegendEntry;
+            /** Returns the legendEntry with the specified id only if this or a member of this legendEntry has the id set. */
+            getById(id: string): LegendEntry | undefined;
         }
     }
 
