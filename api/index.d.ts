@@ -1,6 +1,6 @@
 /**
  * 
- * #### Introduction
+ * ### Introduction
  * 
  * The API is available through the global `RV` namespace, after the `rv-main.js` file is added to the host page.
  * 
@@ -119,7 +119,7 @@
  * $(mapInstance.ui.anchors.MAP_CONTROLS).append('<div>my control</div>');
  * ```
  * <br>
- * #### Event based with MVCObject & MVCArray
+ * ### Event based with MVCObject & MVCArray
  * 
  * Both API users and our backend API implementation will rely on events to signal changes. When a user changes certain properties in the API
  * an event is triggered in the core viewer. Likewise, any backend API changes trigger events which API users can listen to.
@@ -128,6 +128,52 @@
  * 
  * `MVCObject` & `MVCArray` are custom implementations based off similar Google MVC object designs.
  * 
+ * *********
+ * 
+ * ### To be determined 
+ * #### Layers
+ * 
+ * We are currently very integrated with ESRI, both in geoApi and the viewer. The question becomes whether we want geoApi to be changeable/replaceable or if geoApi and the viewer will strictly define the layers and services that are supported.
+ * 
+ * Strict definition is fine and is the easiest way forward, but:
+ * - It will be much more difficult to change direction down the road to allow geoApi to be swappable without breaking everything (core, and third party extensions).
+ * 
+ * Allowing geoApi to be swappable is nice in theory, but a lot of work and:
+ * - how would a custom geoApi implementation be handled by the API? 
+ * - how to handle extensions that might break when custom geoApi is implemented?
+ * 
+ * James' [three potential paths forward](https://github.com/fgpv-vpgf/fgpv-vpgf/issues/2346#issuecomment-328196761):
+ * - Our API exposes currently supported layer classes instead of generic layer class. This approach puts the complexity of layer differences on the API user / plugin implementer.
+ * - Our API layer takes generic layer requests, inspects the internal layers, and figures out how to translate the generic request to supported layer types. This approach gives us some generic-ness and lets us bypass another large refactor on the viewer/geoApi. API would have to react if mismatches happen (e.g. attempt to open grid on a tile layer).
+ * - We totally abstract Mapping APIs from the viewer. This goes whole-hog for "geoApi determines mapping API, viewer should work with any geoApi as long as it implements the correct interface". Probably the most amount of work, and would give the most amount of flexibility. Discussion point would be something like "if we build that level of flexibility, how much would it be used? would the effort pay off in realized value?"
+ * 
+ * #### Extension bundling
+ * 
+ * Mike proposes we [align core extensions](https://github.com/fgpv-vpgf/fgpv-vpgf/issues/2346#issuecomment-328170836) to avoid dependency bloat. 
+ * Core extensions would require a `core.extensions.js` type file created by webpack which contains all core extension dependencies, including
+ * dependencies that may not be required by the subsequently included core extensions themselves.
+ * 
+ * For example, suppose we have the following three core extensions and their dependencies in ():
+ * - Datatables (jQuery, datatable lib)
+ * - Identify (jQuery)
+ * - Full state Restore (Google API)
+ * 
+ * Then `core.extensions.js` would contain `jQuery`, `datatable lib`, and `Google API`. `core.extensions.js` would be required even if we only want to load the identify extension.
+ * 
+ * Third party extensions would require their own bundled dependencies, but:
+ * - Consideration to be made over providing access to some common libraries that we use for core extensions like jQuery and Angular. 
+ * - Are we OK with developing our core extensions in newer versions of angular/jQuery for better performance and to reduce future development time when upgrading the main viewer code base?
+ * 
+ * #### Configuration
+ * 
+ * - Should plugins have a place in the config? i.e. if you want to use `third.party.cat.plugin.js`, would we allow `config -> plugins -> catPlugin -> showGarfield = true`? Otherwise plugins would need to be configured programmatically. 
+ * - Should plugins be able to add/edit/delete sections of the loaded config and trigger a viewer reload? In this sense plugins could be built which automates some manual configuration chores.
+ * 
+ * #### Implementation
+ * 
+ * - Not much dev. time allocated this year to the viewer - what's the game plan from management side?
+ * - Roll out incrementally or wait until the API is full featured.
+ * - Need to balance what makes sense now from a time perspective vs. where we want to be in a year or two. Changing API structure can break many things outside our control, best to do it right the first time and change gradually.
  */
 
 export declare module RV {
@@ -430,7 +476,7 @@ export declare module RV {
         /** 
          * Repeatedly invokes the given function, passing a property value and name on each invocation. 
          * The order of iteration through the properties is undefined.
-         * */
+         */
         forEachProperty(callback: (any, string) => void);
         /** Returns the layer's geometry. */
         getGeometry(): Geometry;
@@ -493,7 +539,9 @@ export declare module RV {
         getType(): string;
     }
 
-
+    /**
+     * The layer namespace encapsulates the various types of layers and layer sub classes such as geometry.
+     */
     export module LAYER {
         /** A Point geometry contains a single LatLng. */
         export class Point extends Geometry {
