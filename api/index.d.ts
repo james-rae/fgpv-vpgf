@@ -1,4 +1,16 @@
 /**
+ * ### What's new
+ * 
+ * #### September 14
+ * - Added namespace `GEOMETRY` which houses, you guessed it, geometry related classes
+ * - Added `ConfigLayer` and `SimpleLayer` to `RV.LAYER` namespace (still a WIP)
+ *     - `ConfigLayer` is more or less a `LegendNode` in `legend-block.class.js`. It is created via JSON layer config snippets. Geometry changes (add/remove) are not supported.
+ *     - `SimpleLayer` is created programmatically and allows for full geometry.
+ * 
+ * @see {@link RV.LAYER}
+ * @see {@link RV.GEOMETRY}
+ * 
+ * *********
  * 
  * ### Introduction
  * 
@@ -128,52 +140,6 @@
  * 
  * `MVCObject` & `MVCArray` are custom implementations based off similar Google MVC object designs.
  * 
- * *********
- * 
- * ### To be determined 
- * #### Layers
- * 
- * We are currently very integrated with ESRI, both in geoApi and the viewer. The question becomes whether we want geoApi to be changeable/replaceable or if geoApi and the viewer will strictly define the layers and services that are supported.
- * 
- * Strict definition is fine and is the easiest way forward, but:
- * - It will be much more difficult to change direction down the road to allow geoApi to be swappable without breaking everything (core, and third party extensions).
- * 
- * Allowing geoApi to be swappable is nice in theory, but a lot of work and:
- * - how would a custom geoApi implementation be handled by the API? 
- * - how to handle extensions that might break when custom geoApi is implemented?
- * 
- * James' [three potential paths forward](https://github.com/fgpv-vpgf/fgpv-vpgf/issues/2346#issuecomment-328196761):
- * - Our API exposes currently supported layer classes instead of generic layer class. This approach puts the complexity of layer differences on the API user / plugin implementer.
- * - Our API layer takes generic layer requests, inspects the internal layers, and figures out how to translate the generic request to supported layer types. This approach gives us some generic-ness and lets us bypass another large refactor on the viewer/geoApi. API would have to react if mismatches happen (e.g. attempt to open grid on a tile layer).
- * - We totally abstract Mapping APIs from the viewer. This goes whole-hog for "geoApi determines mapping API, viewer should work with any geoApi as long as it implements the correct interface". Probably the most amount of work, and would give the most amount of flexibility. Discussion point would be something like "if we build that level of flexibility, how much would it be used? would the effort pay off in realized value?"
- * 
- * #### Extension bundling
- * 
- * Mike proposes we [align core extensions](https://github.com/fgpv-vpgf/fgpv-vpgf/issues/2346#issuecomment-328170836) to avoid dependency bloat. 
- * Core extensions would require a `core.extensions.js` type file created by webpack which contains all core extension dependencies, including
- * dependencies that may not be required by the subsequently included core extensions themselves.
- * 
- * For example, suppose we have the following three core extensions and their dependencies in ():
- * - Datatables (jQuery, datatable lib)
- * - Identify (jQuery)
- * - Full state Restore (Google API)
- * 
- * Then `core.extensions.js` would contain `jQuery`, `datatable lib`, and `Google API`. `core.extensions.js` would be required even if we only want to load the identify extension.
- * 
- * Third party extensions would require their own bundled dependencies, but:
- * - Consideration to be made over providing access to some common libraries that we use for core extensions like jQuery and Angular. 
- * - Are we OK with developing our core extensions in newer versions of angular/jQuery for better performance and to reduce future development time when upgrading the main viewer code base?
- * 
- * #### Configuration
- * 
- * - Should plugins have a place in the config? i.e. if you want to use `third.party.cat.plugin.js`, would we allow `config -> plugins -> catPlugin -> showGarfield = true`? Otherwise plugins would need to be configured programmatically. 
- * - Should plugins be able to add/edit/delete sections of the loaded config and trigger a viewer reload? In this sense plugins could be built which automates some manual configuration chores.
- * 
- * #### Implementation
- * 
- * - Not much dev. time allocated this year to the viewer - what's the game plan from management side?
- * - Roll out incrementally or wait until the API is full featured.
- * - Need to balance what makes sense now from a time perspective vs. where we want to be in a year or two. Changing API structure can break many things outside our control, best to do it right the first time and change gradually.
  */
 
 export declare module RV {
@@ -237,25 +203,25 @@ export declare module RV {
         layers: LAYER.LayerGroup;
 
         /** Returns the position displayed at the center of the map.  */
-        setCenter(latlng: LatLng | LatLngLiteral) : void;
+        setCenter(latlng: RV.GEOMETRY.LatLng | RV.GEOMETRY.LatLngLiteral) : void;
         setZoom(zoom: number) : void;
         /** Changes the center of the map to the given LatLng. If the change is less than both the width and height of the map, the transition will be smoothly animated. */
-        panTo(latLng: LatLng | LatLngLiteral) : void;
+        panTo(latLng: RV.GEOMETRY.LatLng | RV.GEOMETRY.LatLngLiteral) : void;
         /** Changes the center of the map by the given distance in pixels. If the distance is less than both the width and height of the map, the transition will be smoothly animated.  */
         panBy(x: number, y: number) : void;
         getZoom(): number;
         /** Returns the current Projection, based on currently active basemap projection. */
         getProjection(): Projection;
         getDiv(): HTMLElement;
-        getCenter(): LatLng;
-        getBounds(): LatLngBounds;
+        getCenter(): RV.GEOMETRY.LatLng;
+        getBounds(): RV.GEOMETRY.LatLngBounds;
         /** Puts the map into full screen mode when enabled is true, otherwise it cancels fullscreen mode. */
         fullscreen(enabled: boolean) : void;
 
         /** 
          * This event is fired when the viewport boundary changes.
          * @event bounds_changed
-         * @property {LatLngBounds} newBounds
+         * @property {RV.GEOMETRY.LatLngBounds} newBounds
          */
         bounds_changed: Event;
 
@@ -295,96 +261,12 @@ export declare module RV {
         zoom_changed: Event;
     }
 
-    /** A LatLngBounds instance represents a rectangle in geographical coordinates. */
-    export class LatLngBounds {
-        /** Constructs a rectangle from the points at its south-west and north-east corners. */
-        constructor(sw?: LatLng | LatLngLiteral, ne?: LatLng | LatLngLiteral);
-        /** Returns true if the given lat/lng is in this bounds. */
-        contains(latLng: LatLng | LatLngLiteral): boolean;
-        equals(other:LatLngBounds | LatLngBoundsLiteral): boolean;
-        /** Extends this bounds to contain the given point. */
-        extend(point:LatLng|LatLngLiteral): LatLngBounds;
-        /** Computes the center of this LatLngBounds. */
-        getCenter(): LatLng;
-        /** Returns the north-east corner of this bounds. */
-        getNorthEast(): LatLng;
-        /** Returns the south-west corner of this bounds. */
-        getSouthWest(): LatLng;
-        /** Returns true if this bounds shares any points with the other bounds. */
-        intersects(other: LatLngBounds | LatLngBoundsLiteral): boolean;
-        /** Returns if the bounds are empty. */
-        isEmpty(): boolean;
-        /** Converts to JSON representation. This function is intended to be used via JSON.stringify. */
-        toJSON(): LatLngBoundsLiteral
-        /** Converts to string. */
-        toString(): string;
-        /** Returns a string of the form "lat_lo,lng_lo,lat_hi,lng_hi" for this bounds, where "lo" corresponds to the southwest corner of the bounding box, while "hi" corresponds to the northeast corner of that box. */
-        toUrlValue(precision?:number): string;
-        /** Extends this bounds to contain the union of this and the given bounds. */
-        union(other: LatLngBounds | LatLngBoundsLiteral): LatLngBounds;
-    }
-
-    /** Object literals are accepted in place of LatLngBounds objects throughout the API. These are automatically converted to LatLngBounds objects. All south, west, north and east must be set, otherwise an exception is thrown. */
-    export interface LatLngBoundsLiteral {
-        /** East longitude in degrees. */
-        east: number;
-        /** North latitude in degrees. */
-        north: number;
-        /** South latitude in degrees. */
-        south: number;
-        /** West longitude in degrees. */
-        west: number;
-    }
-
     export interface Projection {
         /** Translates from the LatLng cylinder to the Point plane. This interface specifies a function which implements translation from given LatLng values to world coordinates on the map projection. The Maps API calls this method when it needs to plot locations on screen. Projection objects must implement this method. */
-        fromLatLngToPoint(latLng: LatLng, point?: Point);
+        fromLatLngToPoint(latLng: RV.GEOMETRY.LatLng, point?: RV.GEOMETRY.CoordinatePoint);
         /** This interface specifies a function which implements translation from world coordinates on a map projection to LatLng values. The Maps API calls this method when it needs to translate actions on screen to positions on the map. Projection objects must implement this method. */
-        fromPointToLatLng(pixel: Point, nowrap?: boolean);
+        fromPointToLatLng(pixel: RV.GEOMETRY.CoordinatePoint, nowrap?: boolean);
     }
-
-    export class Point {
-        constructor(x: number, y: number);
-        /** Compares two Points. */
-        equals(other: Point): boolean;
-        /** Returns a string representation of this Point. */
-        toString(): string;
-        /** The X coordinate */
-        x: number;
-        /** The Y coordinate */
-        y: number;
-    }
-
-    export class LatLng  {
-        /** Creates a LatLng object representing a geographic point. */
-        constructor(lat: number, lng: number);
-        /** Comparison function. */
-        equals(other:LatLng): boolean;
-        /** Returns the latitude in degrees. */
-        lat(): number;
-        /** Returns the longitude in degrees. */
-        lng();
-        /** Converts to JSON representation. This function is intended to be used via JSON.stringify. */
-        toJSON(): LatLngLiteral;
-        /** Converts to string representation. */
-        toString(): string;
-        /** Returns a string of the form "lat,lng" for this LatLng. We round the lat/lng values to 6 decimal places by default. */
-        toUrlValue(precision?: number): string;
-    }
-
-    export interface LatLngLiteral {
-        /** Latitude in degrees. */
-        lat: number;
-        /** Longitude in degrees. */
-        lng: number;
-    }
-
-    export class Accessor {
-        target: MVCObject;
-        targetKey: string;
-        constructor(target: MVCObject, targetKey: string);
-    }
-
 
     /** The MVCObject constructor is guaranteed to be an empty function, and so you may inherit from MVCObject by simply writing `MySubclass.prototype = new google.maps.MVCObject();`. Unless otherwise noted, this is not true of other classes in the API, and inheriting from other classes in the API is not supported. */
     export class MVCObject {
@@ -472,83 +354,145 @@ export declare module RV {
         set_at: Event;
     }
 
-    export class Layer {
-        /** 
-         * Repeatedly invokes the given function, passing a property value and name on each invocation. 
-         * The order of iteration through the properties is undefined.
-         */
-        forEachProperty(callback: (any, string) => void);
-        /** Returns the layer's geometry. */
-        getGeometry(): Geometry;
-        /** Returns the layer ID. */
-        getId(): number | string | undefined;
-        /** Returns the value of the requested property, or undefined if the property does not exist. */
-        getProperty(name: string): any;
-        /** Removes the property with the given name. */
-        removeProperty(name: string): void;
-        /** Sets the layer's geometry. */
-        setGeometry(newGeometry: Geometry | LatLng | LatLngLiteral);
-        /** Sets the value of the specified property. If newValue is undefined this is equivalent to calling removeProperty. */
-        setProperty(name: string, newValue: any);
-        /** Sets the value of the specified properties. Same as calling setProperty repeatedly, but also triggers the properties_loaded event*/
-        setProperties(name: string, newValue: any);
-        /** Exports the layer to a GeoJSON object. */
-        toGeoJson(callback: (obj: Object) => void);
-        /** Returns the opacity of the layer on the map from 0 (hidden) to 100 (fully visible) */
-        getOpacity(): number;
-        /** Sets the opacity value. */
-        setOpacity(opacity: number): void;
-
-        /** 
-         * This event is triggered when a property is removed.
-         * @event removeproperty
-         */
-        removeproperty: Event;
-
-        /** 
-         * This event is triggered when a geometry is set.
-         * @event setgeometry
-         */
-        setgeometry: Event;
-
-        /** 
-         * This event is triggered when a property is set.
-         * @event setproperty
-         * 
-         */
-        setproperty: Event;
-
-         /** 
-         * This event is fired when a set of layer property is set.
-         * @event setproperty
-         * @property {object} properties - key-value pair of the set values
-         */
-        properties_loaded: Event;
-
-        /** 
-         * This event is triggered when the opacity changes.
-         * @event setproperty
-         */
-        opacity_changed: Event;
-    }
-
-    export class Geometry {
-        /** Repeatedly invokes the given function, passing a point from the geometry to the function on each invocation. */
-        forEachLatLng(callback: (latLng: LatLng) => void)
-        /** Returns the type of the geometry object. Possibilities are "Point", "MultiPoint", "LineString", or "MultiLineString". */
-        getType(): string;
-    }
-
+    
     /**
-     * The layer namespace encapsulates the various types of layers and layer sub classes such as geometry.
+     * ### BaseGeometry
+     * Geometry types extend `BaseGeometry`, such as `Point`, `MultiPoint`, `LineString`, and `MultiLineString`.
+     * 
+     * ### LayerGeometry
+     * Makes handling various types of geometry easier on simple layers.
+     * 
+     * ### Geometry units
+     * All geometry is calculated in latitude / longitude. In general `LatLngLiteral` and `LatLngBoundsLiteral` can be used in places where
+     * `LatLng` and `LatLngBounds` are used and will be converted into their respective instance classes automatically.
      */
-    export module LAYER {
+    export module GEOMETRY {
+
+        /** A LatLngBounds instance represents a rectangle in geographical coordinates. */
+        export class LatLngBounds {
+            /** Constructs a rectangle from the points at its south-west and north-east corners. */
+            constructor(sw?: LatLng | LatLngLiteral, ne?: LatLng | LatLngLiteral);
+            /** Returns true if the given lat/lng is in this bounds. */
+            contains(latLng: LatLng | LatLngLiteral): boolean;
+            equals(other:LatLngBounds | LatLngBoundsLiteral): boolean;
+            /** Extends this bounds to contain the given point. */
+            extend(point:LatLng|LatLngLiteral): LatLngBounds;
+            /** Computes the center of this LatLngBounds. */
+            getCenter(): LatLng;
+            /** Returns the north-east corner of this bounds. */
+            getNorthEast(): LatLng;
+            /** Returns the south-west corner of this bounds. */
+            getSouthWest(): LatLng;
+            /** Returns true if this bounds shares any points with the other bounds. */
+            intersects(other: LatLngBounds | LatLngBoundsLiteral): boolean;
+            /** Returns if the bounds are empty. */
+            isEmpty(): boolean;
+            /** Converts to JSON representation. This function is intended to be used via JSON.stringify. */
+            toJSON(): LatLngBoundsLiteral
+            /** Converts to string. */
+            toString(): string;
+            /** Returns a string of the form "lat_lo,lng_lo,lat_hi,lng_hi" for this bounds, where "lo" corresponds to the southwest corner of the bounding box, while "hi" corresponds to the northeast corner of that box. */
+            toUrlValue(precision?:number): string;
+            /** Extends this bounds to contain the union of this and the given bounds. */
+            union(other: LatLngBounds | LatLngBoundsLiteral): LatLngBounds;
+        }
+
+        /** Object literals are accepted in place of LatLngBounds objects throughout the API. These are automatically converted to LatLngBounds objects. All south, west, north and east must be set, otherwise an exception is thrown. */
+        export interface LatLngBoundsLiteral {
+            /** East longitude in degrees. */
+            east: number;
+            /** North latitude in degrees. */
+            north: number;
+            /** South latitude in degrees. */
+            south: number;
+            /** West longitude in degrees. */
+            west: number;
+        }
+        export class CoordinatePoint {
+            constructor(x: number, y: number);
+            /** Compares two Points. */
+            equals(other: Point): boolean;
+            /** Returns a string representation of this Point. */
+            toString(): string;
+            /** The X coordinate */
+            x: number;
+            /** The Y coordinate */
+            y: number;
+        }
+
+        export class LatLng  {
+            /** Creates a LatLng object representing a geographic point. */
+            constructor(lat: number, lng: number);
+            /** Comparison function. */
+            equals(other:LatLng): boolean;
+            /** Returns the latitude in degrees. */
+            lat(): number;
+            /** Returns the longitude in degrees. */
+            lng();
+            /** Converts to JSON representation. This function is intended to be used via JSON.stringify. */
+            toJSON(): LatLngLiteral;
+            /** Converts to string representation. */
+            toString(): string;
+            /** Returns a string of the form "lat,lng" for this LatLng. We round the lat/lng values to 6 decimal places by default. */
+            toUrlValue(precision?: number): string;
+        }
+    
+        export interface LatLngLiteral {
+            /** Latitude in degrees. */
+            lat: number;
+            /** Longitude in degrees. */
+            lng: number;
+        }
+
+        /**
+         * All geometry types must derive from this class. Not intented to be instantiated on its own.
+         */
+        export class BaseGeometry {
+            constructor(id: string);
+            /** Repeatedly invokes the given function, passing a point from the geometry to the function on each invocation. */
+            forEachLatLng(callback: (latLng: LatLng) => void)
+            /** Returns the type of the geometry object. Possibilities are "Point", "MultiPoint", "LineString", or "MultiLineString". */
+            getType(): string;
+            /** Returns the geometry id. */
+            getId(): string;
+        }
+
+        export class LayerGeometry {
+            /** Recursively calls callback for every geometry. */
+            forEach(callback: (geometry: BaseGeometry) => void): void;
+            /** Sets the value of a data item by key. */
+            setGeometry(geometry: BaseGeometry | LatLng | LatLngLiteral): void;
+            /** Returns the value of the requested data, or undefined if the data does not exist. */
+            getGeometry(): Array<BaseGeometry>;
+            /**
+             * Removes geometry
+             * @param geometry any strings should reference a particular geometry instance with that ID. If undefined, all geometry is removed.
+             */
+            removeGeometry(geometry: Array<string> | string | undefined): void;
+    
+            /** 
+             * This event is triggered whenever geometry is added.
+             * @event geometry_added
+             * @property {Array<BaseGeometry>} geometry
+             * 
+             */
+            geometry_added: Event;
+    
+            /** 
+             * This event is triggered whenever geometry is removed.
+             * @event geometry_removed
+             * @property {Array<BaseGeometry>} geometry
+             * 
+             */
+            geometry_removed: Event;
+        }
+
         /** A Point geometry contains a single LatLng. */
-        export class Point extends Geometry {
+        export class Point extends RV.GEOMETRY.BaseGeometry {
             /** Constructs a Point from the given LatLng or LatLngLiteral. */
-            constructor(latLng: LatLng | LatLngLiteral);
+            constructor(latLng: RV.GEOMETRY.LatLng | RV.GEOMETRY.LatLngLiteral);
             /** Returns the contained LatLng. */
-            get(): LatLng;
+            get(): RV.GEOMETRY.LatLng;
             /** Returns the string "Point". */
             getType(): string;
 
@@ -557,13 +501,13 @@ export declare module RV {
         }
 
         /** A MultiPoint geometry contains a number of LatLngs. */
-        export class MultiPoint extends Geometry {
+        export class MultiPoint extends RV.GEOMETRY.BaseGeometry {
             /** Constructs a MultiPoint from the given LatLngs or LatLngLiterals. */
-            constructor(elements: Array<LatLng | LatLngLiteral>);
+            constructor(elements: Array<RV.GEOMETRY.LatLng | RV.GEOMETRY.LatLngLiteral>);
             /** Returns an array of the contained LatLngs. A new array is returned each time getArray() is called. */
-            getArray(): Array<LatLng>
+            getArray(): Array<RV.GEOMETRY.LatLng>
             /** Returns the n-th contained LatLng. */
-            getAt(n: number): LatLng;
+            getAt(n: number): RV.GEOMETRY.LatLng;
             /** Returns the number of contained LatLngs. */
             getLength(): number;
             /** Returns the string "MultiPoint". */
@@ -577,9 +521,9 @@ export declare module RV {
         }
 
         /** A MultiLineString geometry contains a number of LineStrings. */
-        export class MultiLineString extends Geometry {
+        export class MultiLineString extends RV.GEOMETRY.BaseGeometry {
             /** Constructs a MultiLineString from the given LineStrings or arrays of positions. */
-            constructor(elements: Array<LineString | Array<LatLng | LatLngLiteral>>);
+            constructor(elements: Array<LineString | Array<RV.GEOMETRY.LatLng | RV.GEOMETRY.LatLngLiteral>>);
             /** Returns an array of the contained LineStrings. A new array is returned each time getArray() is called. */
             getArray(): Array<LineString>;
             /** Returns the n-th contained LineString. */
@@ -589,6 +533,108 @@ export declare module RV {
             /** Returns the string "MultiLineString". */
             getType(): string;
         }
+    }
+
+    /**
+     * The layer namespace encapsulates the various types of layers and layer sub classes such as geometry.
+     */
+    export module LAYER {
+
+        export class LayerData {
+            /** Recursively calls callback for every data item. */
+            forEach(callback: (data: DataItem) => void): void;
+            /** Sets the value of a data item by key. */
+            setData(key: string, newValue: any): void;
+            /** Sets data for each key-value pair in the provided object. */
+            setData(keyValue: Object): void;
+            /** Returns the value of the requested data, or undefined if the data does not exist. */
+            getData(key: string): any;
+            /** Returns all data. If applicable, this will pull data from a server, however an empty array will still be
+             * returned if no prior data existed. Use the `data_added` event to determine when pulled data is ready.
+             */
+            getData(): Array<DataItem>;
+            /** Removes the data with the given key, or all data if key is undefined. */
+            removeData(key: string | undefined): void;
+    
+            /** 
+             * This event is triggered whenever one or more data items are added.
+             * @event data_added
+             * @property {Array<DataItem>} data
+             * 
+             */
+            data_added: Event;
+    
+            /** 
+             * This event is triggered whenever an existing data entry is updated.
+             * @event data_changed
+             * @property {DataItem} dataBeforeChange
+             * @property {DataItem} dataAfterChange
+             * 
+             */
+            data_changed: Event;
+    
+            /** 
+             * This event is triggered when data is removed.
+             * @event data_removed
+             * @property {Array<DataItem>} deletedData
+             */
+            data_removed: Event;
+        }
+    
+        export interface DataItem {
+            name: string;
+            value: string | number;
+        }
+
+        export class BaseLayer {
+            data: LayerData;
+    
+            /** Returns the name of the layer.  */
+            getName(): string;
+            /** Sets the name of the layer. This updates the name throughout the viewer. */
+            setName(name: string): void;
+            /** Returns the opacity of the layer on the map from 0 (hidden) to 100 (fully visible) */
+            getOpacity(): number;
+            /** Sets the opacity value.
+             * @returns boolean true if opacity was set successfully, false otherwise (some layers or configurations may not support this)
+             */
+            setOpacity(opacity: number): boolean;
+            /** Exports the layer to a GeoJSON object. */
+            toGeoJson(callback: (obj: Object) => void): void;
+    
+            /** 
+             * This event is triggered when the opacity changes.
+             * @event setproperty
+             */
+            opacity_changed: Event;
+        }
+    
+        export class ConfigLayer extends BaseLayer {
+            /** Requires a schema valid JSON config layer snippet.  */
+            constructor(config: JSON);
+            /** Returns the underlying layer type such as esriFeature, esriDynamic, and ogcWms. */
+            getType(): string;
+            /** Returns the layer ID. */
+            getId(): string;
+    
+            /** 
+             * This event is fired when the layers state changes.
+             * 
+             * The state can be one of 'rv-error', 'rv-bad-projection', 'rv-loading', 'rv-refresh', and 'rv-loaded'. 
+             * This event is always fired at least once with 'rv-loading' as the first state type.
+             * @event state_changed
+             * @property {string} stateName
+             */
+            state_changed: Event;
+        }
+    
+        /**
+         * A simple layer is one created programmatically, without the use of a config construct. 
+         */
+        export class SimpleLayer extends BaseLayer {
+            constructor(name: string);
+            geometry: RV.GEOMETRY.LayerGeometry;
+        }
 
         export class LayerGroup extends MVCObject {
             /** Adds the provided layer to the group, and returns the added layer.
@@ -597,36 +643,36 @@ export declare module RV {
              * 
              * Note that the IDs 1234 and '1234' are equivalent. Adding a layer with ID 1234 will replace a layer with ID '1234', and vice versa.
              */
-            add(layer?: Layer): Layer;
+            add(layer?: BaseLayer): BaseLayer;
             /** Adds GeoJSON layers to the collection. Give this method a parsed JSON. The imported layers are returned. Throws an exception if the GeoJSON could not be imported. */
-            addGeoJson(geoJson: Object): Array<Layer>;
+            addGeoJson(geoJson: Object): Array<BaseLayer>;
             /** Checks whether the given layer is in the collection. */
-            contains(layer: Layer): boolean;
+            contains(layer: BaseLayer): boolean;
             /** Repeatedly invokes the given function, passing a layer in the collection to the function on each invocation. The order of iteration through the layers is undefined. */
-            forEach(callback: (layer: Layer) => void);
+            forEach(callback: (layer: BaseLayer) => void);
             /** Returns the layer with the given ID, if it exists in the collection. Otherwise returns undefined.
              * 
              * Note that the IDs 1234 and '1234' are equivalent. Either can be used to look up the same layer.
              */
-            getLayerById(id: number | string): Layer | undefined;
+            getLayerById(id: number | string): BaseLayer | undefined;
             /** Loads GeoJSON from a URL, and adds the layers to the collection. */
-            loadGeoJson(url: string, callback?: (layers: Array<Layer>) => void): void;
+            loadGeoJson(url: string, callback?: (layers: Array<BaseLayer>) => void): void;
             /** Removes a layer from the collection. */
-            remove(layer: Layer): void;
+            remove(layer: BaseLayer): void;
             /** Exports the layers in the collection to a GeoJSON object. */
             toGeoJson(callback: (object: Object) => void);
 
             /** 
              * This event is fired when a layer is added to the collection.
              * @event addlayer
-             * @property {Layer} layer
+             * @property {BaseLayer} layer
              */
             addlayer: Event;
 
             /** 
              * This event is fired when a layer is removed to the collection.
              * @event removelayer
-             * @property {Layer} layer
+             * @property {BaseLayer} layer
              */
             removelayer: Event;
 
@@ -640,16 +686,16 @@ export declare module RV {
             /** 
              * This event is fired when a layer's geometry is set.
              * @event setgeometry
-             * @property {Layer} layer
-             * @property {Geometry} newGeometry
-             * @property {Geometry} oldGeometry
+             * @property {BaseLayer} layer
+             * @property {BaseGeometry} newGeometry
+             * @property {BaseGeometry} oldGeometry
              */
             setgeometry: Event;
 
             /** 
              * This event is fired when a layer's property is set.
              * @event setproperty
-             * @property {Layer} layer
+             * @property {BaseLayer} layer
              * @property {string} name - the property name
              * @property {any} newValue
              * @property {any} oldValue - The previous value. Will be undefined if the property was added.
@@ -659,7 +705,7 @@ export declare module RV {
             /** 
              * This event is fired when a set of layer property is set.
              * @event setproperty
-             * @property {Layer} layer
+             * @property {BaseLayer} layer
              * @property {object} properties - key-value pair of the set values
              */
             properties_loaded: Event;
@@ -667,7 +713,7 @@ export declare module RV {
             /** 
              * This event is fired when a layer's property is removed.
              * @event removeproperty
-             * @property {Layer} layer
+             * @property {BaseLayer} layer
              * @property {string} name - the property name
              * @property {any} oldValue
              */
@@ -699,7 +745,7 @@ export declare module RV {
          * ```
          */
         export class Basemap extends LAYER.LayerGroup {
-            constructor(name: string, layers: Array<Layer> | Layer, description?: string);
+            constructor(name: string, layers: Array<RV.LAYER.BaseLayer> | RV.LAYER.BaseLayer, description?: string);
             getName(): string;
             setName(name: string): void;
             getDescription(): string;
@@ -894,7 +940,7 @@ export declare module RV {
 
         export class MouseEvent extends StoppableEvent {
             /** The latitude/longitude that was below the cursor when the event occurred. */
-            latLng: LatLng;
+            latLng: RV.GEOMETRY.LatLng;
         }
     
         export class StoppableEvent {
