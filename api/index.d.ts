@@ -1,6 +1,15 @@
 /**
  * ### What's new
  * 
+ * #### September 15
+ * - `RV.LAYER.LayerGroup` has been updated with new events and function definitions. Supports new `ConfigLayer` and `SimpleLayer` types.
+ * - Merged `RV.GEOMETRY.LayerGeometry` into `RV.LAYER.SimpleLayer`. `RV.LAYER.ConfigLayer` will not have access to geometry.
+ * - Merged `RV.LAYER.LayerData` into `RV.LAYER.BaseLayer` for easier access.
+ * - `RV.LAYER.BaseLayer` now extends `MVCObject`
+ * - Various documentation changes and examples added.
+ * 
+ * @see {@link RV.LAYER} <br><br>
+ * 
  * #### September 14
  * - Added namespace `GEOMETRY` which houses, you guessed it, geometry related classes
  * - Added `ConfigLayer` and `SimpleLayer` to `RV.LAYER` namespace (still a WIP)
@@ -31,10 +40,11 @@
  * </body>
  * </html>
  * ```
+ * <br>
  * 
  * We should see a map pop-up on the screen, but this won't work. The API may not be ready by the time the javascript engine reaches our
  * custom script tag. So, we initalize our code inside a function that is guaranteed to be available even if the API isn't, and is invoked
- * when the API is ready:
+ * when the API is ready: <br><br>
  * 
  * ```js
  * // lets initialize our map
@@ -45,34 +55,26 @@
  * <br>
  * #### LayerGroups & Layers
  * 
- * The final design of what exactly a layer will be is yet to be determined - so there will be some magic hand waving in some places to illustrate 
- * how layers in a general sense are handled.
- * 
- * Layers so far have:
- *     - geometry -> things that are visualized on the map
- *     - properties -> data, like those found in a data table
- *     - settings -> for things like opacity
- * 
  * Layers will in most cases reside in a `LayerGroup` - a fancy version of an array with special properties and events to make handling many of them easier.
  * 
  * ```js
  * // lets create two layers with my magic wand
- * const myLayer1 = new MagicLayer();
- * const myLayer2 = new MagicLayer();
+ * const myLayer1 = new RV.LAYER.SimpleLayer();
+ * const myLayer2 = new RV.LAYER.SimpleLayer();
  * 
  * const layerGroup1 = new RV.LAYER.LayerGroup();
  * layerGroup1.add(myLayer1);
  * layerGroup1.add(myLayer2);
  * ```
- * 
- * Pretty boring so far. How about we open an external data table whenever a layer has data to show (again with a lot of magic)?
- * 
+ * <br>
+ * Pretty boring so far. How about we open an external data table whenever a layer has data to show?
+ * <br><br>
  * ```js
- * layerGroup1.addListener('properties_loaded', function(layerName, properties) {
- *     magicDatatable.open(properties);
+ * layerGroup1.addListener('data_added', function(layer, data) {
+ *     magicDatatable.open(data);
  * });
  * 
- * myLayer2.setProperties([{objectid: 1, title: 'A Title'}, {objectid: 2, title: 'Another Title'}]);
+ * myLayer2.setData([{objectid: 1, title: 'A Title'}, {objectid: 2, title: 'Another Title'}]);
  * ```
  * <br>
  * #### Using layerGroups
@@ -81,22 +83,23 @@
  * 
  * ```js
  * // show on the map
- * mapInstance.layers.add(myLayer2);
+ * mapInstance.layers.addLayer(myLayer2);
  * myLayer2.setOpacity(0); // where did it go? It's hidden!
  * myLayer2.setOpacity(70); // that's better
  * 
  * // Its not yet in the legend, lets add it
- * const specificLegendEntry = mapInstance.ui.legend.getById('legendGroup1');
- * specificLegendEntry.add(myLayer2);
+ * // TODO: Integrate legend with new layer types
+ * //const specificLegendEntry = mapInstance.ui.legend.getById('legendGroup1');
+ * //specificLegendEntry.add(myLayer2);
  * 
  * // And lets add a custom element after it, just because we can...
  * var legendDiv = document.createElement('div');
  * $(legendDiv).html('Some text...');
  * specificLegendEntry.add(legendDiv);
  * ```
- * 
+ * <br>
  * The process is similar with basemaps.
- * 
+ * <br><br>
  * #### UI control
  * 
  * We can open and close panels like:
@@ -359,9 +362,6 @@ export declare module RV {
      * ### BaseGeometry
      * Geometry types extend `BaseGeometry`, such as `Point`, `MultiPoint`, `LineString`, and `MultiLineString`.
      * 
-     * ### LayerGeometry
-     * Makes handling various types of geometry easier on simple layers.
-     * 
      * ### Geometry units
      * All geometry is calculated in latitude / longitude. In general `LatLngLiteral` and `LatLngBoundsLiteral` can be used in places where
      * `LatLng` and `LatLngBounds` are used and will be converted into their respective instance classes automatically.
@@ -457,40 +457,10 @@ export declare module RV {
             getId(): string;
         }
 
-        export class LayerGeometry {
-            /** Recursively calls callback for every geometry. */
-            forEach(callback: (geometry: BaseGeometry) => void): void;
-            /** Sets the value of a data item by key. */
-            setGeometry(geometry: BaseGeometry | LatLng | LatLngLiteral): void;
-            /** Returns the value of the requested data, or undefined if the data does not exist. */
-            getGeometry(): Array<BaseGeometry>;
-            /**
-             * Removes geometry
-             * @param geometry any strings should reference a particular geometry instance with that ID. If undefined, all geometry is removed.
-             */
-            removeGeometry(geometry: Array<string> | string | undefined): void;
-    
-            /** 
-             * This event is triggered whenever geometry is added.
-             * @event geometry_added
-             * @property {Array<BaseGeometry>} geometry
-             * 
-             */
-            geometry_added: Event;
-    
-            /** 
-             * This event is triggered whenever geometry is removed.
-             * @event geometry_removed
-             * @property {Array<BaseGeometry>} geometry
-             * 
-             */
-            geometry_removed: Event;
-        }
-
         /** A Point geometry contains a single LatLng. */
         export class Point extends RV.GEOMETRY.BaseGeometry {
             /** Constructs a Point from the given LatLng or LatLngLiteral. */
-            constructor(latLng: RV.GEOMETRY.LatLng | RV.GEOMETRY.LatLngLiteral);
+            constructor(id: string | number, latLng: RV.GEOMETRY.LatLng | RV.GEOMETRY.LatLngLiteral);
             /** Returns the contained LatLng. */
             get(): RV.GEOMETRY.LatLng;
             /** Returns the string "Point". */
@@ -503,7 +473,7 @@ export declare module RV {
         /** A MultiPoint geometry contains a number of LatLngs. */
         export class MultiPoint extends RV.GEOMETRY.BaseGeometry {
             /** Constructs a MultiPoint from the given LatLngs or LatLngLiterals. */
-            constructor(elements: Array<RV.GEOMETRY.LatLng | RV.GEOMETRY.LatLngLiteral>);
+            constructor(id: string | number, elements: Array<RV.GEOMETRY.LatLng | RV.GEOMETRY.LatLngLiteral>);
             /** Returns an array of the contained LatLngs. A new array is returned each time getArray() is called. */
             getArray(): Array<RV.GEOMETRY.LatLng>
             /** Returns the n-th contained LatLng. */
@@ -523,7 +493,7 @@ export declare module RV {
         /** A MultiLineString geometry contains a number of LineStrings. */
         export class MultiLineString extends RV.GEOMETRY.BaseGeometry {
             /** Constructs a MultiLineString from the given LineStrings or arrays of positions. */
-            constructor(elements: Array<LineString | Array<RV.GEOMETRY.LatLng | RV.GEOMETRY.LatLngLiteral>>);
+            constructor(id: string | number, elements: Array<LineString | Array<RV.GEOMETRY.LatLng | RV.GEOMETRY.LatLngLiteral>>);
             /** Returns an array of the contained LineStrings. A new array is returned each time getArray() is called. */
             getArray(): Array<LineString>;
             /** Returns the n-th contained LineString. */
@@ -536,13 +506,33 @@ export declare module RV {
     }
 
     /**
-     * The layer namespace encapsulates the various types of layers and layer sub classes such as geometry.
+     * There are two types of layers available, `ConfigLayer` and `SimpleLayer`. 
+     * 
+     * #### ConfigLayer
+     * 
+     * All layers specified in the viewers configuration file will be available as `ConfigLayer` instances on the map object (`mapInstance.layers`).
+     * 
+     * You can also create a `ConfigLayer` via the API by constructing it with a schema valid layer json object.
+     * 
+     * @see {@link RV.LAYER.ConfigLayer} examples <br><br>
+     * 
+     * #### SimpleLayer
+     * 
+     * Must be created programatically through the API. Unlike `ConfigLayer`, `SimpleLayer` instances have API control of their geometry.
+     * 
+     * @see {@link RV.LAYER.SimpleLayer} examples <br><br>
+     * 
      */
     export module LAYER {
 
-        export class LayerData {
+        export interface DataItem {
+            name: string;
+            value: string | number;
+        }
+
+        export class BaseLayer extends MVCObject {
             /** Recursively calls callback for every data item. */
-            forEach(callback: (data: DataItem) => void): void;
+            forEachData(callback: (data: DataItem) => void): void;
             /** Sets the value of a data item by key. */
             setData(key: string, newValue: any): void;
             /** Sets data for each key-value pair in the provided object. */
@@ -579,15 +569,6 @@ export declare module RV {
              * @property {Array<DataItem>} deletedData
              */
             data_removed: Event;
-        }
-    
-        export interface DataItem {
-            name: string;
-            value: string | number;
-        }
-
-        export class BaseLayer {
-            data: LayerData;
     
             /** Returns the name of the layer.  */
             getName(): string;
@@ -599,23 +580,75 @@ export declare module RV {
              * @returns boolean true if opacity was set successfully, false otherwise (some layers or configurations may not support this)
              */
             setOpacity(opacity: number): boolean;
+            /** Returns true if the layer is currently visible, flase otherwise. */
+            getVisibility(): boolean;
+            /** Sets the visibility to visible/invisible. */
+            setVisibility(visibility: boolean): void;
             /** Exports the layer to a GeoJSON object. */
             toGeoJson(callback: (obj: Object) => void): void;
+            /** Returns the layer ID. */
+            getId(): string;
     
             /** 
              * This event is triggered when the opacity changes.
-             * @event setproperty
+             * @event opacity_changed
              */
             opacity_changed: Event;
+
+            /** 
+             * This event is triggered when the visibility changes.
+             * @event visibility_changed
+             */
+            visibility_changed: Event;
         }
     
+        /**
+         * A config layer instance is created automatically for every layer in the viewers configuration. You can also create them outside the config.
+         * 
+         * Note that `ConfigLayer` instances cannot control geometry.
+         * 
+         * #### Todo
+         * 
+         * - Need to determine which functions we want to support here, and/or which functions we want to expose but not support:
+         *     - zoomToScale
+         *     - zoomToBoundary
+         *     - zoomToGraphic
+         *     - fetchGraphic
+         *     - symbologyStack
+         *     - catalogueUrl
+         *     - getSymbol 
+         * 
+         * @example Create a ConfigLayer <br><br>
+         * 
+         * ```js
+         * const layerJson = {
+         *   "id": "myLayer1",
+         *   "name": "An Incredible Layer",
+         *   "layerType": "esriFeature",
+         *   "controls": [
+         *     "remove"
+         *   ],
+         *   "state": {
+         *     "visibility": false,
+         *     "boundingBox": false
+         *   },
+         *   "url": "http://example.com/MapServer/URL"
+         * };
+         * 
+         * const myConfigLayer = new RV.LAYER.ConfigLayer(layerJson);
+         * 
+         * myConfigLayer.addListener('state_changed', function(stateName) {
+         *  if (stateName === 'rv-loaded') {
+         *    // layer has loaded, do stuff here
+         *  }
+         * });
+         * ```
+         */
         export class ConfigLayer extends BaseLayer {
             /** Requires a schema valid JSON config layer snippet.  */
             constructor(config: JSON);
             /** Returns the underlying layer type such as esriFeature, esriDynamic, and ogcWms. */
             getType(): string;
-            /** Returns the layer ID. */
-            getId(): string;
     
             /** 
              * This event is fired when the layers state changes.
@@ -629,95 +662,142 @@ export declare module RV {
         }
     
         /**
-         * A simple layer is one created programmatically, without the use of a config construct. 
+         * A simple layer is one created programmatically via the API - without the use of a config construct. 
+         * 
+         * @example #### Create a SimpleLayer and draw a line<br><br> 
+         * 
+         * ```js
+         * const mySimpleLayer = new RV.LAYER.SimpleLayer('myLayer1');
+         * const lineGeo = new RV.LAYER.LineString('myLine', [{lat: 81, lng: 79}, {lat: 51, lng: 49}]);
+         * mySimpleLayer.setGeometry(lineGeo);
+         * ```
          */
         export class SimpleLayer extends BaseLayer {
             constructor(name: string);
-            geometry: RV.GEOMETRY.LayerGeometry;
+            /** Returns the name of this layer. This is equivalent to calling `getId()` - `SimpleLayer` id's always match their name. 
+             * 
+             * @see {@link BaseLayer.getId}
+             */
+            getName(): string;
+
+            /** Recursively calls callback for every geometry. */
+            forEachGeometry(callback: (geometry: RV.GEOMETRY.BaseGeometry) => void): void;
+            /** Sets the value of a data item by key. */
+            setGeometry(geometry: RV.GEOMETRY.BaseGeometry): void;
+            /** Returns the value of the requested data, or undefined if the data does not exist. */
+            getGeometry(): Array<RV.GEOMETRY.BaseGeometry>;
+            /**
+             * Removes geometry
+             * @param geometry any strings should reference a particular geometry instance with that ID. If undefined, all geometry is removed.
+             */
+            removeGeometry(geometry: Array<string> | string | undefined): void;
+    
+            /** 
+             * This event is triggered whenever geometry is added.
+             * @event geometry_added
+             * @property {Array<RV.GEOMETRY.BaseGeometry>} geometry
+             * 
+             */
+            geometry_added: Event;
+    
+            /** 
+             * This event is triggered whenever geometry is removed.
+             * @event geometry_removed
+             * @property {Array<RV.GEOMETRY.BaseGeometry>} geometry
+             * 
+             */
+            geometry_removed: Event;
         }
 
+        /**
+         * #### Under Consideration
+         * - To expose the events `geometry_added`, `geometry_removed`. These could only fire for `SimpleLayer` instances in this group.
+         */
         export class LayerGroup extends MVCObject {
-            /** Adds the provided layer to the group, and returns the added layer.
-             * 
-             * If the layer has an ID, it will replace any existing layer in the collection with the same ID. If no layer or JSON is given, a new layer will be created with null geometry and no properties.
-             * 
-             * Note that the IDs 1234 and '1234' are equivalent. Adding a layer with ID 1234 will replace a layer with ID '1234', and vice versa.
-             */
-            add(layer?: BaseLayer): BaseLayer;
-            /** Adds GeoJSON layers to the collection. Give this method a parsed JSON. The imported layers are returned. Throws an exception if the GeoJSON could not be imported. */
-            addGeoJson(geoJson: Object): Array<BaseLayer>;
-            /** Checks whether the given layer is in the collection. */
+            /** Adds the provided layer instance to the group, and returns the instance. */
+            addLayer(layer: BaseLayer): BaseLayer;
+            /** Providing a layer json snippet returns a `ConfigLayer`.*/
+            addLayer(layerJSON: JSON): ConfigLayer;
+            /** Providing a string layer name will instantiate and return an empty `SimpleLayer` */
+            addLayer(layerName: string): SimpleLayer;
+            /** Adds GeoJSON layers to the group. Give this method a parsed JSON. The imported layers are returned. Throws an exception if the GeoJSON could not be imported. */
+            addLayer(geoJson: Object): Array<SimpleLayer>;
+            /** Loads GeoJSON from a URL, and adds the layers to the group. Invokes callback function once async layer loading is complete. */
+            addLayer(url: string, callback?: (layers: Array<SimpleLayer>) => void): void;
+            /** Checks whether the given layer is in the group. */
             contains(layer: BaseLayer): boolean;
-            /** Repeatedly invokes the given function, passing a layer in the collection to the function on each invocation. The order of iteration through the layers is undefined. */
-            forEach(callback: (layer: BaseLayer) => void);
-            /** Returns the layer with the given ID, if it exists in the collection. Otherwise returns undefined.
+            /** Checks whether the given layer by id is in the group. */
+            contains(id: string | number): boolean;
+            /** Repeatedly invokes the given function, passing a layer in the group to the function on each invocation. The order of iteration through the layers is undefined. */
+            forEach(callback: (layer: BaseLayer) => void): void;
+            /** Returns the layer with the given ID, if it exists in the group. Otherwise returns undefined.
              * 
              * Note that the IDs 1234 and '1234' are equivalent. Either can be used to look up the same layer.
              */
             getLayerById(id: number | string): BaseLayer | undefined;
-            /** Loads GeoJSON from a URL, and adds the layers to the collection. */
-            loadGeoJson(url: string, callback?: (layers: Array<BaseLayer>) => void): void;
-            /** Removes a layer from the collection. */
-            remove(layer: BaseLayer): void;
-            /** Exports the layers in the collection to a GeoJSON object. */
-            toGeoJson(callback: (object: Object) => void);
+            /** Returns all layers of a given type.
+             * 
+             * @example <br><br> 
+             * 
+             * ```js
+             * const listOfSimpleLayers = mapInstance.layers.getLayerByType(RV.LAYERS.SimpleLayer);
+             * ```
+             */
+            getLayerByType(type: ConfigLayer | SimpleLayer): Array<BaseLayer>;
+            /** Removes a layer from the group. */
+            removeLayer(layer: BaseLayer): void;
+            /** Removes the layer with the provided id from the group. */
+            removeLayer(id: string | number): void;
+            /** Exports the layers in the group to a GeoJSON object. */
+            toGeoJson(callback: (object: Object) => void): void;
 
             /** 
-             * This event is fired when a layer is added to the collection.
-             * @event addlayer
+             * This event is fired when a layer is added to the group.
+             * @event layer_added
              * @property {BaseLayer} layer
              */
-            addlayer: Event;
+            layer_added: Event;
 
             /** 
-             * This event is fired when a layer is removed to the collection.
-             * @event removelayer
-             * @property {BaseLayer} layer
+             * This event is fired when a layer is removed to the group.
+             * @event layer_removed
+             * @property {BaseLayer} layerRemoved
              */
-            removelayer: Event;
+            layer_removed: Event;
 
             /** 
-             * This event is fired for a click on the geometry.
+             * This event is fired when a layer is clicked on the legend.
              * @event click
-             * @property {Event.MouseEvent} event
+             * @property {BaseLayer} layerClicked
              */
             click: Event;
 
             /** 
-             * This event is fired when a layer's geometry is set.
-             * @event setgeometry
+             * This event is triggered whenever one or more data items are added.
+             * @event data_added
              * @property {BaseLayer} layer
-             * @property {BaseGeometry} newGeometry
-             * @property {BaseGeometry} oldGeometry
+             * @property {Array<DataItem>} data
+             * 
              */
-            setgeometry: Event;
-
+            data_added: Event;
+            
             /** 
-             * This event is fired when a layer's property is set.
-             * @event setproperty
+             * This event is triggered whenever an existing data entry is updated.
+             * @event data_changed
              * @property {BaseLayer} layer
-             * @property {string} name - the property name
-             * @property {any} newValue
-             * @property {any} oldValue - The previous value. Will be undefined if the property was added.
+             * @property {DataItem} dataBeforeChange
+             * @property {DataItem} dataAfterChange
+             * 
              */
-            setproperty: Event;
-
+            data_changed: Event;
+    
             /** 
-             * This event is fired when a set of layer property is set.
-             * @event setproperty
+             * This event is triggered when data is removed.
+             * @event data_removed
              * @property {BaseLayer} layer
-             * @property {object} properties - key-value pair of the set values
+             * @property {Array<DataItem>} deletedData
              */
-            properties_loaded: Event;
-
-            /** 
-             * This event is fired when a layer's property is removed.
-             * @event removeproperty
-             * @property {BaseLayer} layer
-             * @property {string} name - the property name
-             * @property {any} oldValue
-             */
-            removeproperty: Event;
+            data_removed: Event;
         }
     }
 
