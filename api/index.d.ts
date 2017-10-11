@@ -1,183 +1,125 @@
 /**
  * ### What's new
- * 
+ *
+ * #### October 11
+ * - Expanded documentation on creating and registering extentions
+ * - Created 'map_added' event to `RV`
+ * - Added `addListener` and `addListenerOnce` to RV for extension registration
+ *
  * #### September 15
  * - `RV.LAYER.LayerGroup` has been updated with new events and function definitions. Supports new `ConfigLayer` and `SimpleLayer` types.
  * - Merged `RV.GEOMETRY.LayerGeometry` into `RV.LAYER.SimpleLayer`. `RV.LAYER.ConfigLayer` will not have access to geometry.
  * - Merged `RV.LAYER.LayerData` into `RV.LAYER.BaseLayer` for easier access.
  * - `RV.LAYER.BaseLayer` now extends `MVCObject`
  * - Various documentation changes and examples added.
- * 
+ *
  * @see {@link RV.LAYER} <br><br>
- * 
+ *
  * #### September 14
  * - Added namespace `GEOMETRY` which houses, you guessed it, geometry related classes
  * - Added `ConfigLayer` and `SimpleLayer` to `RV.LAYER` namespace (still a WIP)
  *     - `ConfigLayer` is more or less a `LegendNode` in `legend-block.class.js`. It is created via JSON layer config snippets. Geometry changes (add/remove) are not supported.
  *     - `SimpleLayer` is created programmatically and allows for full geometry.
- * 
+ *
  * @see {@link RV.LAYER}
  * @see {@link RV.GEOMETRY}
- * 
+ *
  * *********
- * 
- * ### Introduction
- * 
- * The API is available through the global `RV` namespace, after the `rv-main.js` file is added to the host page.
- * 
+ *
+ * This guide is intented for developers. It will guide you through the use of our API and how to build custom `extentions`. An `extention` is the custom code you write to add new features or modify existing ones to the viewer.
+ *
+ * There is no right or wrong way to write an extention - choose the approach that works best for you.
+ *
+ * ### Extention example
+ *
+ * We're going to create an extention which populates an external select box with layer names and only shows the currently selected layer on the map.
+ *
+ * Let's create a new file named `layerSelector.js`.
+ *
+ * ### Initialize extention
+ *
+ * You'll need a way to know when the API is ready to use. Inside `layerSelector.js` type:
+ *
+ * ```js
+ * RV.addListenerOnce('map_added', init);
+ *
+ * function init(mapInstance) {
+ *  // empty for now
+ * }
+ * ```
+ *
+ * The code you want to run when your extention starts up will be inside the `init` function which is only invoked when the API is ready.
+ *
+ * @see {@link RV.Map} for more information on `mapInstance`
+ *
+ * ### Registering extention file
+ *
+ * The relative path to the `layerSelector.js` file goes inside the `rv-extentions` property of our map element.
+ *
  * ```html
- * <html>
- * <head>
- * <!-- load any css -->
- * </head>
- * <body>
- *     <div id="myMap"></div>
- *     <script src="rv-main.js" />
- *     <script>
- *         // lets initialize our map
- *         const mapInstance = new RV.Map(document.getElementById('myMap'), 'mapConfig.json');
- *     </script>
- * </body>
- * </html>
+ * <div is="rv-map" rv-config="config.json" rv-extentions="js/layerSelector.js"></div>
  * ```
- * <br>
- * 
- * We should see a map pop-up on the screen, but this won't work. The API may not be ready by the time the javascript engine reaches our
- * custom script tag. So, we initalize our code inside a function that is guaranteed to be available even if the API isn't, and is invoked
- * when the API is ready: <br><br>
- * 
- * ```js
- * // lets initialize our map
- * RV.onReady(function() {
- *     const mapInstance = new RV.Map(document.getElementById('myMap'), 'mapConfig.json');
- * });
+ *
+ * Additional extentions can be added, separated by commas:
+ *
+ * ```html
+ * <div id="map1" is="rv-map" rv-config="config.json" rv-extentions="js/layerSelector.js, http://www.example.com/js/anotherExtention.js"></div>
  * ```
- * <br>
- * #### LayerGroups & Layers
- * 
- * Layers will in most cases reside in a `LayerGroup` - a fancy version of an array with special properties and events to make handling many of them easier.
- * 
- * ```js
- * // lets create two layers with my magic wand
- * const myLayer1 = new RV.LAYER.SimpleLayer();
- * const myLayer2 = new RV.LAYER.SimpleLayer();
- * 
- * const layerGroup1 = new RV.LAYER.LayerGroup();
- * layerGroup1.add(myLayer1);
- * layerGroup1.add(myLayer2);
+ *
+ * You can also skip using `rv-extentions` entirely and load the `layerSelector.js` directly after the viewers `rv-main.js` file.
+ *
+ * ```html
+ * <script src="js/rv-main.js"></script>
+ * <script src="js/layerSelector.js"></script>
  * ```
- * <br>
- * Pretty boring so far. How about we open an external data table whenever a layer has data to show?
- * <br><br>
- * ```js
- * layerGroup1.addListener('data_added', function(layer, data) {
- *     magicDatatable.open(data);
- * });
- * 
- * myLayer2.setData([{objectid: 1, title: 'A Title'}, {objectid: 2, title: 'Another Title'}]);
- * ```
- * <br>
- * #### Using layerGroups
- * 
- * A `layerGroup` can define the list of available basemaps, layers on a map, or in a legend. Lets add a layer to the map and show it in the legend
- * 
- * ```js
- * // show on the map
- * mapInstance.layers.addLayer(myLayer2);
- * myLayer2.setOpacity(0); // where did it go? It's hidden!
- * myLayer2.setOpacity(70); // that's better
- * 
- * // Its not yet in the legend, lets add it
- * // TODO: Integrate legend with new layer types
- * //const specificLegendEntry = mapInstance.ui.legend.getById('legendGroup1');
- * //specificLegendEntry.add(myLayer2);
- * 
- * // And lets add a custom element after it, just because we can...
- * var legendDiv = document.createElement('div');
- * $(legendDiv).html('Some text...');
- * specificLegendEntry.add(legendDiv);
- * ```
- * <br>
- * The process is similar with basemaps.
- * <br><br>
- * #### UI control
- * 
- * We can open and close panels like:
- * 
- * ```js
- * mapInstance.ui.panels.getById('left').open();
- * ```
- * 
- * Of course we would be opening an empty panel. Lets try this again:
- * ```js
- * mapInstance.ui.panels.addListener('opened', function(panel) {
- *     if (panel.getId() === 'left')
- *         panel.setContent(aDivNode);
- * });
- * 
- * mapInstance.ui.panels.getById('left').open();
- * ```
- * 
- * We can also stop panels from opening or closing by listening to the `opening` and `closing` events like so:
- * 
- * ```js
- * mapInstance.ui.panels.addListener('closing', function(panel, event) {
- *     if (panel.getId() === 'left')
- *         event.stop();
- * });
- * ```
- * 
- * Apart from that, `mapInstance.ui.anchors` provides dom nodes of common places in the viewer you may want to edit or add.
- * Adding a custom map control is easy:
- * 
- * ```js
- * $(mapInstance.ui.anchors.MAP_CONTROLS).append('<div>my control</div>');
- * ```
- * <br>
- * ### Event based with MVCObject & MVCArray
- * 
- * Both API users and our backend API implementation will rely on events to signal changes. When a user changes certain properties in the API
- * an event is triggered in the core viewer. Likewise, any backend API changes trigger events which API users can listen to.
- * 
- * Available events are documented throughout this API. 
- * 
- * `MVCObject` & `MVCArray` are custom implementations based off similar Google MVC object designs.
- * 
+ *
+ *
  */
 
 export declare module RV {
+
+    /**
+     * This event is fired when a new map instance is created.
+     * @event map_added
+     * @property {RV.Map} mapInstance
+     */
+    map_added: Event;
+
+    export function addListener(eventName: string, handler: Function): MapsEventListener;
+    export function addListenerOnce(eventName: string, handler: Function): MapsEventListener;
+
     /** A map instance is needed for every map on the page. To display `x` number of maps at the same time, you'll need `x` number of map instances,
      * with separate div containers for each one.
-     * 
+     *
      * @example <br><br>
-     * 
+     *
      * ```js
      * var mapInstance = new Map(document.getElementById('map'));
      * ```
      */
     export class Map extends MVCObject {
-        /** Creates a new map inside of the given HTML container, which is typically a DIV element. 
+        /** Creates a new map inside of the given HTML container, which is typically a DIV element.
          * If opts is a string then it is considered to be a url to a json config snippet of a map.
         */
         constructor(mapDiv: HTMLElement, opts?: Object | JSON | string);
 
         /**
          * Contains UI related functionality.
-         * 
+         *
          * @example #### Adding data tags on the side menu buttons for Google tag manager integration <br><br>
-         * 
+         *
          * ```js
          * $(mapInstance.ui.anchors.SIDE_MENU.GROUPS).find('button').each(function(node) {
          *     node.data('google-tag', '');
          * });
          * ```
-         * 
+         *
          * @example #### Opening the left side menu panel<br><br>
-         * 
+         *
          * ```js
          * mapInstance.ui.panels.getById('sideMenu').open();
          * ```
-         * 
+         *
          * @example #### Adding a map control button<br><br>
          * ```js
          * var controlDiv = document.createElement('div');
@@ -192,15 +134,15 @@ export declare module RV {
             basemaps: UI.Basemap;
         };
 
-        /** 
+        /**
          * Every Map has a `layers` object by default, so there is no need to initialize one - even if the map has no layers.
-         * 
+         *
          * @example #### Add geoJSON & getting a layer by its ID <br><br>
-         * 
+         *
          * ```js
          * var mapInstance = new RV.Map(...);
          * mapInstance.layers.addGeoJson(...);
-         * mapInstance.layers.getLayerById(...); 
+         * mapInstance.layers.getLayerById(...);
          * ```
          */
         layers: LAYER.LayerGroup;
@@ -221,42 +163,42 @@ export declare module RV {
         /** Puts the map into full screen mode when enabled is true, otherwise it cancels fullscreen mode. */
         fullscreen(enabled: boolean) : void;
 
-        /** 
+        /**
          * This event is fired when the viewport boundary changes.
          * @event bounds_changed
          * @property {RV.GEOMETRY.LatLngBounds} newBounds
          */
         bounds_changed: Event;
 
-        /** 
+        /**
          * This event is fired when the map center property changes.
          * @event center_changed
          * @property {latlng} newLatLng
          */
         center_changed: Event;
 
-        /** 
+        /**
          * This event is fired when the user clicks on the map, but does not fire for clicks on panels or other map controls.
          * @event click
          * @property {Event.MouseEvent} event
          */
         click: Event;
 
-        /** 
+        /**
          * This event is fired when the users mouse moves over the map, but does not fire for movement over panels or other map controls.
          * @event mousemove
          * @property {Event.MouseEvent} event
          */
         mousemove: Event;
 
-        /** 
+        /**
          * This event is fired when the map projection changes.
          * @event projection_changed
          * @property {Projection} projection
          */
         projection_changed: Event;
 
-        /** 
+        /**
          * This event is fired when the maps zoom level changes.
          * @event zoom_changed
          * @property {number} zoom
@@ -273,10 +215,10 @@ export declare module RV {
 
     /** The MVCObject constructor is guaranteed to be an empty function, and so you may inherit from MVCObject by simply writing `MySubclass.prototype = new google.maps.MVCObject();`. Unless otherwise noted, this is not true of other classes in the API, and inheriting from other classes in the API is not supported. */
     export class MVCObject {
-        /** 
-         * Adds the given listener function to the given event name. 
-         * Returns an identifier for this listener that can be used with RV.event.removeListener. 
-         * 
+        /**
+         * Adds the given listener function to the given event name.
+         * Returns an identifier for this listener that can be used with RV.event.removeListener.
+         *
          * @see {@link RV.event.addListener}
          * */
         addListener(eventName: string, handler: Function): MapsEventListener;
@@ -284,7 +226,7 @@ export declare module RV {
         get(key: string): any;
         /** Sets 'value' to 'key' on 'this'. */
         set(key: string, value?: any): MVCObject;
-        /** Generic handler for state changes. Override this in derived classes to handle arbitrary state changes. 
+        /** Generic handler for state changes. Override this in derived classes to handle arbitrary state changes.
          * @example <br><br>
          * ```js
          * var m = new MVCObject();
@@ -334,21 +276,21 @@ export declare module RV {
         /** Sets an element at the specified index. */
         setAt(i:number, elem: A);
 
-        /** 
+        /**
          * This event is fired when insertAt() is called. The event passes the index that was passed to insertAt().
          * @event insert_at
          * @property {number} index
          */
         insert_at: Event;
 
-        /** 
+        /**
          * This event is fired when removeAt() is called. The event passes the index that was passed to removeAt() and the element that was removed from the array.
          * @event remove_at
          * @property {number} index
          * @property {any} element
          */
-        remove_at: Event; 
-        /** 
+        remove_at: Event;
+        /**
          * This event is fired when setAt() is called. The event passes the index that was passed to setAt() and the element that was previously in the array at that index.
          * @event set_at
          * @property {number} index
@@ -357,11 +299,11 @@ export declare module RV {
         set_at: Event;
     }
 
-    
+
     /**
      * ### BaseGeometry
      * Geometry types extend `BaseGeometry`, such as `Point`, `MultiPoint`, `LineString`, and `MultiLineString`.
-     * 
+     *
      * ### Geometry units
      * All geometry is calculated in latitude / longitude. In general `LatLngLiteral` and `LatLngBoundsLiteral` can be used in places where
      * `LatLng` and `LatLngBounds` are used and will be converted into their respective instance classes automatically.
@@ -436,7 +378,7 @@ export declare module RV {
             /** Returns a string of the form "lat,lng" for this LatLng. We round the lat/lng values to 6 decimal places by default. */
             toUrlValue(precision?: number): string;
         }
-    
+
         export interface LatLngLiteral {
             /** Latitude in degrees. */
             lat: number;
@@ -506,22 +448,69 @@ export declare module RV {
     }
 
     /**
-     * There are two types of layers available, `ConfigLayer` and `SimpleLayer`. 
-     * 
+     * There are two types of layers available, `ConfigLayer` and `SimpleLayer`.
+     *
      * #### ConfigLayer
-     * 
+     *
      * All layers specified in the viewers configuration file will be available as `ConfigLayer` instances on the map object (`mapInstance.layers`).
-     * 
+     *
      * You can also create a `ConfigLayer` via the API by constructing it with a schema valid layer json object.
-     * 
+     *
      * @see {@link RV.LAYER.ConfigLayer} examples <br><br>
-     * 
+     *
      * #### SimpleLayer
-     * 
+     *
      * Must be created programatically through the API. Unlike `ConfigLayer`, `SimpleLayer` instances have API control of their geometry.
-     * 
+     *
      * @see {@link RV.LAYER.SimpleLayer} examples <br><br>
-     * 
+     *
+     * #### LayerGroups & Layers
+     *
+     * Layers will in most cases reside in a `LayerGroup` - a fancy version of an array with special properties and events to make handling many of them easier.
+     *
+     * ```js
+     * // lets create two layers with my magic wand
+     * const myLayer1 = new RV.LAYER.SimpleLayer();
+     * const myLayer2 = new RV.LAYER.SimpleLayer();
+     *
+     * const layerGroup1 = new RV.LAYER.LayerGroup();
+     * layerGroup1.add(myLayer1);
+     * layerGroup1.add(myLayer2);
+     * ```
+     * <br>
+     * Pretty boring so far. How about we open an external data table whenever a layer has data to show?
+     * <br><br>
+     * ```js
+     * layerGroup1.addListener('data_added', function(layer, data) {
+     *     magicDatatable.open(data);
+     * });
+     *
+     * myLayer2.setData([{objectid: 1, title: 'A Title'}, {objectid: 2, title: 'Another Title'}]);
+     * ```
+     * <br>
+     * #### Using layerGroups
+     *
+     * A `layerGroup` can define the list of available basemaps, layers on a map, or in a legend. Lets add a layer to the map and show it in the legend
+     *
+     * ```js
+     * // show on the map
+     * mapInstance.layers.addLayer(myLayer2);
+     * myLayer2.setOpacity(0); // where did it go? It's hidden!
+     * myLayer2.setOpacity(70); // that's better
+     *
+     * // Its not yet in the legend, lets add it
+     * // TODO: Integrate legend with new layer types
+     * //const specificLegendEntry = mapInstance.ui.legend.getById('legendGroup1');
+     * //specificLegendEntry.add(myLayer2);
+     *
+     * // And lets add a custom element after it, just because we can...
+     * var legendDiv = document.createElement('div');
+     * $(legendDiv).html('Some text...');
+     * specificLegendEntry.add(legendDiv);
+     * ```
+     * <br>
+     * The process is similar with basemaps.
+     *
      */
     export module LAYER {
 
@@ -545,31 +534,31 @@ export declare module RV {
             getData(): Array<DataItem>;
             /** Removes the data with the given key, or all data if key is undefined. */
             removeData(key: string | undefined): void;
-    
-            /** 
+
+            /**
              * This event is triggered whenever one or more data items are added.
              * @event data_added
              * @property {Array<DataItem>} data
-             * 
+             *
              */
             data_added: Event;
-    
-            /** 
+
+            /**
              * This event is triggered whenever an existing data entry is updated.
              * @event data_changed
              * @property {DataItem} dataBeforeChange
              * @property {DataItem} dataAfterChange
-             * 
+             *
              */
             data_changed: Event;
-    
-            /** 
+
+            /**
              * This event is triggered when data is removed.
              * @event data_removed
              * @property {Array<DataItem>} deletedData
              */
             data_removed: Event;
-    
+
             /** Returns the name of the layer.  */
             getName(): string;
             /** Sets the name of the layer. This updates the name throughout the viewer. */
@@ -588,27 +577,27 @@ export declare module RV {
             toGeoJson(callback: (obj: Object) => void): void;
             /** Returns the layer ID. */
             getId(): string;
-    
-            /** 
+
+            /**
              * This event is triggered when the opacity changes.
              * @event opacity_changed
              */
             opacity_changed: Event;
 
-            /** 
+            /**
              * This event is triggered when the visibility changes.
              * @event visibility_changed
              */
             visibility_changed: Event;
         }
-    
+
         /**
          * A config layer instance is created automatically for every layer in the viewers configuration. You can also create them outside the config.
-         * 
+         *
          * Note that `ConfigLayer` instances cannot control geometry.
-         * 
+         *
          * #### Todo
-         * 
+         *
          * - Need to determine which functions we want to support here, and/or which functions we want to expose but not support:
          *     - zoomToScale
          *     - zoomToBoundary
@@ -616,10 +605,10 @@ export declare module RV {
          *     - fetchGraphic
          *     - symbologyStack
          *     - catalogueUrl
-         *     - getSymbol 
-         * 
+         *     - getSymbol
+         *
          * @example Create a ConfigLayer <br><br>
-         * 
+         *
          * ```js
          * const layerJson = {
          *   "id": "myLayer1",
@@ -634,9 +623,9 @@ export declare module RV {
          *   },
          *   "url": "http://example.com/MapServer/URL"
          * };
-         * 
+         *
          * const myConfigLayer = new RV.LAYER.ConfigLayer(layerJson);
-         * 
+         *
          * myConfigLayer.addListener('state_changed', function(stateName) {
          *  if (stateName === 'rv-loaded') {
          *    // layer has loaded, do stuff here
@@ -649,23 +638,23 @@ export declare module RV {
             constructor(config: JSON);
             /** Returns the underlying layer type such as esriFeature, esriDynamic, and ogcWms. */
             getType(): string;
-    
-            /** 
+
+            /**
              * This event is fired when the layers state changes.
-             * 
-             * The state can be one of 'rv-error', 'rv-bad-projection', 'rv-loading', 'rv-refresh', and 'rv-loaded'. 
+             *
+             * The state can be one of 'rv-error', 'rv-bad-projection', 'rv-loading', 'rv-refresh', and 'rv-loaded'.
              * This event is always fired at least once with 'rv-loading' as the first state type.
              * @event state_changed
              * @property {string} stateName
              */
             state_changed: Event;
         }
-    
+
         /**
-         * A simple layer is one created programmatically via the API - without the use of a config construct. 
-         * 
-         * @example #### Create a SimpleLayer and draw a line<br><br> 
-         * 
+         * A simple layer is one created programmatically via the API - without the use of a config construct.
+         *
+         * @example #### Create a SimpleLayer and draw a line<br><br>
+         *
          * ```js
          * const mySimpleLayer = new RV.LAYER.SimpleLayer('myLayer1');
          * const lineGeo = new RV.LAYER.LineString('myLine', [{lat: 81, lng: 79}, {lat: 51, lng: 49}]);
@@ -674,8 +663,8 @@ export declare module RV {
          */
         export class SimpleLayer extends BaseLayer {
             constructor(name: string);
-            /** Returns the name of this layer. This is equivalent to calling `getId()` - `SimpleLayer` id's always match their name. 
-             * 
+            /** Returns the name of this layer. This is equivalent to calling `getId()` - `SimpleLayer` id's always match their name.
+             *
              * @see {@link BaseLayer.getId}
              */
             getName(): string;
@@ -691,20 +680,20 @@ export declare module RV {
              * @param geometry any strings should reference a particular geometry instance with that ID. If undefined, all geometry is removed.
              */
             removeGeometry(geometry: Array<string> | string | undefined): void;
-    
-            /** 
+
+            /**
              * This event is triggered whenever geometry is added.
              * @event geometry_added
              * @property {Array<RV.GEOMETRY.BaseGeometry>} geometry
-             * 
+             *
              */
             geometry_added: Event;
-    
-            /** 
+
+            /**
              * This event is triggered whenever geometry is removed.
              * @event geometry_removed
              * @property {Array<RV.GEOMETRY.BaseGeometry>} geometry
-             * 
+             *
              */
             geometry_removed: Event;
         }
@@ -731,14 +720,14 @@ export declare module RV {
             /** Repeatedly invokes the given function, passing a layer in the group to the function on each invocation. The order of iteration through the layers is undefined. */
             forEach(callback: (layer: BaseLayer) => void): void;
             /** Returns the layer with the given ID, if it exists in the group. Otherwise returns undefined.
-             * 
+             *
              * Note that the IDs 1234 and '1234' are equivalent. Either can be used to look up the same layer.
              */
             getLayerById(id: number | string): BaseLayer | undefined;
             /** Returns all layers of a given type.
-             * 
-             * @example <br><br> 
-             * 
+             *
+             * @example <br><br>
+             *
              * ```js
              * const listOfSimpleLayers = mapInstance.layers.getLayerByType(RV.LAYERS.SimpleLayer);
              * ```
@@ -751,47 +740,47 @@ export declare module RV {
             /** Exports the layers in the group to a GeoJSON object. */
             toGeoJson(callback: (object: Object) => void): void;
 
-            /** 
+            /**
              * This event is fired when a layer is added to the group.
              * @event layer_added
              * @property {BaseLayer} layer
              */
             layer_added: Event;
 
-            /** 
+            /**
              * This event is fired when a layer is removed to the group.
              * @event layer_removed
              * @property {BaseLayer} layerRemoved
              */
             layer_removed: Event;
 
-            /** 
+            /**
              * This event is fired when a layer is clicked on the legend.
              * @event click
              * @property {BaseLayer} layerClicked
              */
             click: Event;
 
-            /** 
+            /**
              * This event is triggered whenever one or more data items are added.
              * @event data_added
              * @property {BaseLayer} layer
              * @property {Array<DataItem>} data
-             * 
+             *
              */
             data_added: Event;
-            
-            /** 
+
+            /**
              * This event is triggered whenever an existing data entry is updated.
              * @event data_changed
              * @property {BaseLayer} layer
              * @property {DataItem} dataBeforeChange
              * @property {DataItem} dataAfterChange
-             * 
+             *
              */
             data_changed: Event;
-    
-            /** 
+
+            /**
              * This event is triggered when data is removed.
              * @event data_removed
              * @property {BaseLayer} layer
@@ -801,20 +790,57 @@ export declare module RV {
         }
     }
 
-    /** Defines UI component classes and interfaces. */
+    /**
+     * Defines UI component classes and interfaces.
+     *
+     * #### UI control
+     *
+     * We can open and close panels like:
+     *
+     * ```js
+     * mapInstance.ui.panels.getById('left').open();
+     * ```
+     *
+     * Of course we would be opening an empty panel. Lets try this again:
+     * ```js
+     * mapInstance.ui.panels.addListener('opened', function(panel) {
+     *     if (panel.getId() === 'left')
+     *         panel.setContent(aDivNode);
+     * });
+     *
+     * mapInstance.ui.panels.getById('left').open();
+     * ```
+     *
+     * We can also stop panels from opening or closing by listening to the `opening` and `closing` events like so:
+     *
+     * ```js
+     * mapInstance.ui.panels.addListener('closing', function(panel, event) {
+     *     if (panel.getId() === 'left')
+     *         event.stop();
+     * });
+     * ```
+     *
+     * Apart from that, `mapInstance.ui.anchors` provides dom nodes of common places in the viewer you may want to edit or add.
+     * Adding a custom map control is easy:
+     *
+     * ```js
+     * $(mapInstance.ui.anchors.MAP_CONTROLS).append('<div>my control</div>');
+     * ```
+     * <br>
+     */
     export module UI {
 
         /**
          * Defines a basemap which is selectable from the basemap panel once added to the map. For example:
-         * 
+         *
          * ```js
          * var myBasemap = new RV.UI.Basemap('My Custom Basemap', 'A personal favorite of mine.', [myLayer1, myLayer2]);
          * myBasemap.setActive(true); // make active so it is displayed when added.
          * mapInstance.set('basemaps', myBasemap);
          * ```
-         * 
+         *
          * @example <br><br>
-         * 
+         *
          * ```js
          * var firstBasemap = mapInstance.ui.basemaps.getLayerById(0);
          * firstBasemap.addListener('active_changed', function(isActive) {
@@ -835,7 +861,7 @@ export declare module RV {
             setActive(active: boolean): void;
             /** Derived from the layer projections that compose this basemap. You cannot set a projection. */
             getProjection(): Projection;
-            
+
             /**
              * @event name_changed
              * @property {string} name - The new name
@@ -876,7 +902,7 @@ export declare module RV {
 
         /**
          * @todo Discuss if we should add more panel locations?
-         * 
+         *
          * <br><br>
          * ```text
          * Panel types:
@@ -885,7 +911,7 @@ export declare module RV {
          *  import      -   Import wizard
          *  details     -   Layer details
          *  basemap     -   Basemap selector slider menu
-         * 
+         *
          * There are also top level types:
          *  left    -   contains legend, import, details
          *  center  -   datatables
@@ -896,21 +922,21 @@ export declare module RV {
             getById(id: string): Panel | undefined;
             forEach(callback: (panel: Panel) => void): void;
 
-            /** 
+            /**
              * This event is fired when a panel is fully open and content is finished rendering.
              * @event opened
              * @property {Panel} Panel
              */
             opened: Event;
-            
-            /** 
+
+            /**
              * This event is fired when a panel is fully closed.
              * @event closed
              * @property {Panel} Panel
              */
             closed: Event;
 
-            /** 
+            /**
              * This event is fired before a panel starts to open. Calling `event.stop()` prevents the panel from opening.
              * @event opening
              * @property {Panel} Panel
@@ -919,7 +945,7 @@ export declare module RV {
              */
             opening: EVENT.StoppableEvent;
 
-            /** 
+            /**
              * This event is fired before a panel starts to close. Calling `event.stop()` prevents the panel from closing.
              * @event closing
              * @property {Panel} Panel
@@ -945,20 +971,20 @@ export declare module RV {
              * You can provide a dom node to set as the panels content.
              */
             setContent(node: Node): void;
-            
-            /** 
+
+            /**
              * This event is fired when the panel is fully open and content is finished rendering.
              * @event opened
              */
             opened: Event;
 
-            /** 
+            /**
              * This event is fired when the panel is fully closed.
              * @event closed
              */
             closed: Event;
 
-            /** 
+            /**
              * This event is fired before the panel starts to open. Calling `event.stop()` prevents the panel from opening.
              * @event opening
              * @property {Event.StoppableEvent} event
@@ -966,7 +992,7 @@ export declare module RV {
              */
             opening: EVENT.StoppableEvent;
 
-            /** 
+            /**
              * This event is fired before the panel starts to close. Calling `event.stop()` prevents the panel from closing.
              * @event closing
              * @property {Event.StoppableEvent} event
@@ -992,9 +1018,9 @@ export declare module RV {
 
     /**
      * Uses the `RV.Event` namespace. Handles event registration on MVCObjects and on DOM Nodes.
-     * 
+     *
      * @example The following two statements are equivalent <br><br>
-     * 
+     *
      * ```js
      * mapInstance.addListener('bounds_changed', function() {...});
      * RV.Event.addListener(mapInstance, 'bounds_changed', function() {...});
@@ -1022,7 +1048,7 @@ export declare module RV {
             /** The latitude/longitude that was below the cursor when the event occurred. */
             latLng: RV.GEOMETRY.LatLng;
         }
-    
+
         export class StoppableEvent {
             /** Prevents this event from propagating further, and in some case preventing viewer action. */
             stop(): void;
