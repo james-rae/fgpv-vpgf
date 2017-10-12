@@ -1,10 +1,11 @@
 /**
  * ### What's new
  *
- * #### October 11
+ * #### October 12
  * - Expanded documentation on creating and registering extentions
  * - Created 'map_added' event to `RV`
- * - Added `addListener` and `addListenerOnce` to RV for extension registration
+ * - Added `addListener` and `addListenerOnce` to RV for extension registration`
+ * - Renamed LatLng and similar classes to XY
  *
  * #### September 15
  * - `RV.LAYER.LayerGroup` has been updated with new events and function definitions. Supports new `ConfigLayer` and `SimpleLayer` types.
@@ -12,8 +13,6 @@
  * - Merged `RV.LAYER.LayerData` into `RV.LAYER.BaseLayer` for easier access.
  * - `RV.LAYER.BaseLayer` now extends `MVCObject`
  * - Various documentation changes and examples added.
- *
- * @see {@link RV.LAYER} <br><br>
  *
  * #### September 14
  * - Added namespace `GEOMETRY` which houses, you guessed it, geometry related classes
@@ -26,19 +25,15 @@
  *
  * *********
  *
- * This guide is intented for developers. It will guide you through the use of our API and how to build custom `extentions`. An `extention` is the custom code you write to add new features or modify existing ones to the viewer.
+ * This guide is intented for developers. It outlines the entire viewers API and provides examples throughout.
  *
- * There is no right or wrong way to write an extention - choose the approach that works best for you.
+ * In all but some trival cases, you'll want to use the API in something called an `extention`. An `extention` is a file(s) where you can write custom code that uses our API. There is no right or wrong way to write an extention - choose the approach that works best for you.
  *
- * ### Extention example
+ * We'll start by example - building an extention that allows you to toggle layer visibility through an external select box.
  *
- * We're going to create an extention which populates an external select box with layer names and only shows the currently selected layer on the map.
+ * ### Getting Started
  *
- * Let's create a new file named `layerSelector.js`.
- *
- * ### Initialize extention
- *
- * You'll need a way to know when the API is ready to use. Inside `layerSelector.js` type:
+ * Let's create a new file named `layerSelector.js`. We'll jump right in and write some code, inside `layerSelector.js` type:
  *
  * ```js
  * RV.addListenerOnce('map_added', init);
@@ -48,7 +43,7 @@
  * }
  * ```
  *
- * The code you want to run when your extention starts up will be inside the `init` function which is only invoked when the API is ready.
+ * You don't want the extention code executing immediatly on load since the API may not be ready. Instead, you wait for a special event `map_added` which invokes your `init` function.
  *
  * @see {@link RV.Map} for more information on `mapInstance`
  *
@@ -73,6 +68,8 @@
  * <script src="js/layerSelector.js"></script>
  * ```
  *
+ * If you go this route you should change the line `RV.addListenerOnce('map_added', init);` in `layerSelector.js` to `RV.addListener('map_added', init);` so that your extention is invoked for all viewer instances on the page, not just the first one.
+ *
  *
  */
 
@@ -83,7 +80,7 @@ export declare module RV {
      * @event map_added
      * @property {RV.Map} mapInstance
      */
-    map_added: Event;
+    export const map_added: Event;
 
     export function addListener(eventName: string, handler: Function): MapsEventListener;
     export function addListenerOnce(eventName: string, handler: Function): MapsEventListener;
@@ -148,32 +145,32 @@ export declare module RV {
         layers: LAYER.LayerGroup;
 
         /** Returns the position displayed at the center of the map.  */
-        setCenter(latlng: RV.GEOMETRY.LatLng | RV.GEOMETRY.LatLngLiteral) : void;
+        setCenter(xy: RV.GEOMETRY.XY | RV.GEOMETRY.XYLiteral) : void;
         setZoom(zoom: number) : void;
-        /** Changes the center of the map to the given LatLng. If the change is less than both the width and height of the map, the transition will be smoothly animated. */
-        panTo(latLng: RV.GEOMETRY.LatLng | RV.GEOMETRY.LatLngLiteral) : void;
+        /** Changes the center of the map to the given XY. If the change is less than both the width and height of the map, the transition will be smoothly animated. */
+        panTo(xy: RV.GEOMETRY.XY | RV.GEOMETRY.XYLiteral) : void;
         /** Changes the center of the map by the given distance in pixels. If the distance is less than both the width and height of the map, the transition will be smoothly animated.  */
         panBy(x: number, y: number) : void;
         getZoom(): number;
         /** Returns the current Projection, based on currently active basemap projection. */
         getProjection(): Projection;
         getDiv(): HTMLElement;
-        getCenter(): RV.GEOMETRY.LatLng;
-        getBounds(): RV.GEOMETRY.LatLngBounds;
+        getCenter(): RV.GEOMETRY.XY;
+        getBounds(): RV.GEOMETRY.XYBounds;
         /** Puts the map into full screen mode when enabled is true, otherwise it cancels fullscreen mode. */
         fullscreen(enabled: boolean) : void;
 
         /**
          * This event is fired when the viewport boundary changes.
          * @event bounds_changed
-         * @property {RV.GEOMETRY.LatLngBounds} newBounds
+         * @property {RV.GEOMETRY.XYBounds} newBounds
          */
         bounds_changed: Event;
 
         /**
          * This event is fired when the map center property changes.
          * @event center_changed
-         * @property {latlng} newLatLng
+         * @property {xy} newXY
          */
         center_changed: Event;
 
@@ -207,10 +204,10 @@ export declare module RV {
     }
 
     export interface Projection {
-        /** Translates from the LatLng cylinder to the Point plane. This interface specifies a function which implements translation from given LatLng values to world coordinates on the map projection. The Maps API calls this method when it needs to plot locations on screen. Projection objects must implement this method. */
-        fromLatLngToPoint(latLng: RV.GEOMETRY.LatLng, point?: RV.GEOMETRY.CoordinatePoint);
-        /** This interface specifies a function which implements translation from world coordinates on a map projection to LatLng values. The Maps API calls this method when it needs to translate actions on screen to positions on the map. Projection objects must implement this method. */
-        fromPointToLatLng(pixel: RV.GEOMETRY.CoordinatePoint, nowrap?: boolean);
+        /** Translates from the XY cylinder to the Point plane. This interface specifies a function which implements translation from given XY values to world coordinates on the map projection. The Maps API calls this method when it needs to plot locations on screen. Projection objects must implement this method. */
+        fromXYToPoint(xy: RV.GEOMETRY.XY, point?: RV.GEOMETRY.CoordinatePoint);
+        /** This interface specifies a function which implements translation from world coordinates on a map projection to XY values. The Maps API calls this method when it needs to translate actions on screen to positions on the map. Projection objects must implement this method. */
+        fromPointToXY(pixel: RV.GEOMETRY.CoordinatePoint, nowrap?: boolean);
     }
 
     /** The MVCObject constructor is guaranteed to be an empty function, and so you may inherit from MVCObject by simply writing `MySubclass.prototype = new google.maps.MVCObject();`. Unless otherwise noted, this is not true of other classes in the API, and inheriting from other classes in the API is not supported. */
@@ -305,49 +302,49 @@ export declare module RV {
      * Geometry types extend `BaseGeometry`, such as `Point`, `MultiPoint`, `LineString`, and `MultiLineString`.
      *
      * ### Geometry units
-     * All geometry is calculated in latitude / longitude. In general `LatLngLiteral` and `LatLngBoundsLiteral` can be used in places where
-     * `LatLng` and `LatLngBounds` are used and will be converted into their respective instance classes automatically.
+     * All geometry is calculated in x,y decimal degrees. In general `XYLiteral` and `XYBoundsLiteral` can be used in places where
+     * `XY` and `XYBounds` are used and will be converted into their respective instance classes automatically.
      */
     export module GEOMETRY {
 
-        /** A LatLngBounds instance represents a rectangle in geographical coordinates. */
-        export class LatLngBounds {
+        /** A XYBounds instance represents a rectangle in geographical coordinates. */
+        export class XYBounds {
             /** Constructs a rectangle from the points at its south-west and north-east corners. */
-            constructor(sw?: LatLng | LatLngLiteral, ne?: LatLng | LatLngLiteral);
-            /** Returns true if the given lat/lng is in this bounds. */
-            contains(latLng: LatLng | LatLngLiteral): boolean;
-            equals(other:LatLngBounds | LatLngBoundsLiteral): boolean;
+            constructor(sw?: XY | XYLiteral, ne?: XY | XYLiteral);
+            /** Returns true if the given x,y decimal degrees is in this bounds. */
+            contains(xy: XY | XYLiteral): boolean;
+            equals(other:XYBounds | XYBoundsLiteral): boolean;
             /** Extends this bounds to contain the given point. */
-            extend(point:LatLng|LatLngLiteral): LatLngBounds;
-            /** Computes the center of this LatLngBounds. */
-            getCenter(): LatLng;
+            extend(point:XY|XYLiteral): XYBounds;
+            /** Computes the center of this XYBounds. */
+            getCenter(): XY;
             /** Returns the north-east corner of this bounds. */
-            getNorthEast(): LatLng;
+            getNorthEast(): XY;
             /** Returns the south-west corner of this bounds. */
-            getSouthWest(): LatLng;
+            getSouthWest(): XY;
             /** Returns true if this bounds shares any points with the other bounds. */
-            intersects(other: LatLngBounds | LatLngBoundsLiteral): boolean;
+            intersects(other: XYBounds | XYBoundsLiteral): boolean;
             /** Returns if the bounds are empty. */
             isEmpty(): boolean;
             /** Converts to JSON representation. This function is intended to be used via JSON.stringify. */
-            toJSON(): LatLngBoundsLiteral
+            toJSON(): XYBoundsLiteral
             /** Converts to string. */
             toString(): string;
-            /** Returns a string of the form "lat_lo,lng_lo,lat_hi,lng_hi" for this bounds, where "lo" corresponds to the southwest corner of the bounding box, while "hi" corresponds to the northeast corner of that box. */
+            /** Returns a string of the form "x_lo,y_lo,x_hi,y_hi" for this bounds, where "lo" corresponds to the southwest corner of the bounding box, while "hi" corresponds to the northeast corner of that box. */
             toUrlValue(precision?:number): string;
             /** Extends this bounds to contain the union of this and the given bounds. */
-            union(other: LatLngBounds | LatLngBoundsLiteral): LatLngBounds;
+            union(other: XYBounds | XYBoundsLiteral): XYBounds;
         }
 
-        /** Object literals are accepted in place of LatLngBounds objects throughout the API. These are automatically converted to LatLngBounds objects. All south, west, north and east must be set, otherwise an exception is thrown. */
-        export interface LatLngBoundsLiteral {
-            /** East longitude in degrees. */
+        /** Object literals are accepted in place of XYBounds objects throughout the API. These are automatically converted to XYBounds objects. All south, west, north and east must be set, otherwise an exception is thrown. */
+        export interface XYBoundsLiteral {
+            /** East x in decimal degrees. */
             east: number;
-            /** North latitude in degrees. */
+            /** North y in decimal degrees. */
             north: number;
-            /** South latitude in degrees. */
+            /** South y in decimal degrees. */
             south: number;
-            /** West longitude in degrees. */
+            /** West x in decimal degrees. */
             west: number;
         }
         export class CoordinatePoint {
@@ -362,28 +359,28 @@ export declare module RV {
             y: number;
         }
 
-        export class LatLng  {
-            /** Creates a LatLng object representing a geographic point. */
-            constructor(lat: number, lng: number);
+        export class XY  {
+            /** Creates a XY object representing a geographic point. */
+            constructor(y: number, x: number);
             /** Comparison function. */
-            equals(other:LatLng): boolean;
-            /** Returns the latitude in degrees. */
-            lat(): number;
+            equals(other:XY): boolean;
+            /** Returns y in deciamal degrees. */
+            y(): number;
             /** Returns the longitude in degrees. */
-            lng();
+            x();
             /** Converts to JSON representation. This function is intended to be used via JSON.stringify. */
-            toJSON(): LatLngLiteral;
+            toJSON(): XYLiteral;
             /** Converts to string representation. */
             toString(): string;
-            /** Returns a string of the form "lat,lng" for this LatLng. We round the lat/lng values to 6 decimal places by default. */
+            /** Returns a string of the form "y,x" for this XY. We round the y/x values to 6 decimal places by default. */
             toUrlValue(precision?: number): string;
         }
 
-        export interface LatLngLiteral {
+        export interface XYLiteral {
             /** Latitude in degrees. */
-            lat: number;
+            y: number;
             /** Longitude in degrees. */
-            lng: number;
+            x: number;
         }
 
         /**
@@ -392,19 +389,19 @@ export declare module RV {
         export class BaseGeometry {
             constructor(id: string);
             /** Repeatedly invokes the given function, passing a point from the geometry to the function on each invocation. */
-            forEachLatLng(callback: (latLng: LatLng) => void)
+            forEachXY(callback: (xy: XY) => void)
             /** Returns the type of the geometry object. Possibilities are "Point", "MultiPoint", "LineString", or "MultiLineString". */
             getType(): string;
             /** Returns the geometry id. */
             getId(): string;
         }
 
-        /** A Point geometry contains a single LatLng. */
+        /** A Point geometry contains a single XY. */
         export class Point extends RV.GEOMETRY.BaseGeometry {
-            /** Constructs a Point from the given LatLng or LatLngLiteral. */
-            constructor(id: string | number, latLng: RV.GEOMETRY.LatLng | RV.GEOMETRY.LatLngLiteral);
-            /** Returns the contained LatLng. */
-            get(): RV.GEOMETRY.LatLng;
+            /** Constructs a Point from the given XY or XYLiteral. */
+            constructor(id: string | number, xy: RV.GEOMETRY.XY | RV.GEOMETRY.XYLiteral);
+            /** Returns the contained XY. */
+            get(): RV.GEOMETRY.XY;
             /** Returns the string "Point". */
             getType(): string;
 
@@ -412,21 +409,21 @@ export declare module RV {
             icon: string;
         }
 
-        /** A MultiPoint geometry contains a number of LatLngs. */
+        /** A MultiPoint geometry contains a number of XYs. */
         export class MultiPoint extends RV.GEOMETRY.BaseGeometry {
-            /** Constructs a MultiPoint from the given LatLngs or LatLngLiterals. */
-            constructor(id: string | number, elements: Array<RV.GEOMETRY.LatLng | RV.GEOMETRY.LatLngLiteral>);
-            /** Returns an array of the contained LatLngs. A new array is returned each time getArray() is called. */
-            getArray(): Array<RV.GEOMETRY.LatLng>
-            /** Returns the n-th contained LatLng. */
-            getAt(n: number): RV.GEOMETRY.LatLng;
-            /** Returns the number of contained LatLngs. */
+            /** Constructs a MultiPoint from the given XYs or XYLiterals. */
+            constructor(id: string | number, elements: Array<RV.GEOMETRY.XY | RV.GEOMETRY.XYLiteral>);
+            /** Returns an array of the contained XYs. A new array is returned each time getArray() is called. */
+            getArray(): Array<RV.GEOMETRY.XY>
+            /** Returns the n-th contained XY. */
+            getAt(n: number): RV.GEOMETRY.XY;
+            /** Returns the number of contained XYs. */
             getLength(): number;
             /** Returns the string "MultiPoint". */
             getType(): string;
         }
 
-        /** A LineString geometry contains a number of LatLngs. */
+        /** A LineString geometry contains a number of XYs. */
         export class LineString extends MultiPoint {
             /** Returns the string "LineString". */
             getType(): string;
@@ -435,12 +432,12 @@ export declare module RV {
         /** A MultiLineString geometry contains a number of LineStrings. */
         export class MultiLineString extends RV.GEOMETRY.BaseGeometry {
             /** Constructs a MultiLineString from the given LineStrings or arrays of positions. */
-            constructor(id: string | number, elements: Array<LineString | Array<RV.GEOMETRY.LatLng | RV.GEOMETRY.LatLngLiteral>>);
+            constructor(id: string | number, elements: Array<LineString | Array<RV.GEOMETRY.XY | RV.GEOMETRY.XYLiteral>>);
             /** Returns an array of the contained LineStrings. A new array is returned each time getArray() is called. */
             getArray(): Array<LineString>;
             /** Returns the n-th contained LineString. */
             getAt(n:number): Array<LineString>;
-            /** Returns the number of contained LatLngs. */
+            /** Returns the number of contained XYs. */
             getLength(): number;
             /** Returns the string "MultiLineString". */
             getType(): string;
@@ -657,7 +654,7 @@ export declare module RV {
          *
          * ```js
          * const mySimpleLayer = new RV.LAYER.SimpleLayer('myLayer1');
-         * const lineGeo = new RV.LAYER.LineString('myLine', [{lat: 81, lng: 79}, {lat: 51, lng: 49}]);
+         * const lineGeo = new RV.LAYER.LineString('myLine', [{y: 81, x: 79}, {y: 51, x: 49}]);
          * mySimpleLayer.setGeometry(lineGeo);
          * ```
          */
@@ -1045,8 +1042,8 @@ export declare module RV {
         export function trigger(instance: Object, eventName: string, ...var_args: Array<any>);
 
         export class MouseEvent extends StoppableEvent {
-            /** The latitude/longitude that was below the cursor when the event occurred. */
-            latLng: RV.GEOMETRY.LatLng;
+            /** The y/x that was below the cursor when the event occurred. */
+            xy: RV.GEOMETRY.XY;
         }
 
         export class StoppableEvent {
