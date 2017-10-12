@@ -6,6 +6,8 @@
  * - Created 'map_added' event to `RV`
  * - Added `addListener` and `addListenerOnce` to RV for extension registration`
  * - Renamed LatLng and similar classes to XY
+ * - Added `Polygon`, `MultiPolygon`, `Annotation`, `MultiAnnotation`, and `LinearRing` geometry types
+ * - Added `fetchData` and `setLayerDefinitions` on `configLayer`
  *
  * #### September 15
  * - `RV.LAYER.LayerGroup` has been updated with new events and function definitions. Supports new `ConfigLayer` and `SimpleLayer` types.
@@ -429,6 +431,47 @@ export declare module RV {
             getType(): string;
         }
 
+        /** A LinearRing geometry contains a number of y,x decimal degrees, representing a closed LineString. There is no need to make the first y,x equal to the last y,x. The LinearRing is closed implicitly. */
+        export class LinearRing extends BaseGeometry {
+            constructor(id: string | number, elements: Array<RV.GEOMETRY.XY | RV.GEOMETRY.XYLiteral>);
+        }
+
+        export class Polygon extends BaseGeometry {
+            constructor(id: string | number, elements: Array<LinearRing>);
+            /** Returns the string "Polygon". */
+            getType(): string;
+            /** Returns true iff the given point is within the polygon */
+            contains(point: Point): boolean;
+            /** Returns the total area of the polygon in the given unit */
+            area(unit: string): number;
+            /** Returns the perimeter of the polygon in the given unit */
+            perimeter(unit: string): number;
+        }
+
+        export class MultiPolygon extends BaseGeometry {
+            constructor(id: string | number, polygons: Array<Polygon>);
+            /** Returns the string "MultiPolygon". */
+            getType(): string;
+            /** Returns true iff the given point is within any of the contained polygons */
+            contains(point: Point): boolean;
+            /** Returns the total area of all the polygons in the given unit */
+            area(unit: string): number;
+            /** Returns the perimeter of all the polygons in the given unit */
+            perimeter(unit: string): number;
+        }
+
+        export class Annotation extends BaseGeometry {
+            constructor(id: string | number, number, xy: RV.GEOMETRY.XY | RV.GEOMETRY.XYLiteral, text: string);
+            /** Returns the string "Annotation". */
+            getType(): string;
+        }
+
+        export class MultiAnnotation extends BaseGeometry {
+            constructor(id: string | number, annotations: Array<Annotation>);
+            /** Returns the string "MultiAnnotation". */
+            getType(): string;
+        }
+
         /** A MultiLineString geometry contains a number of LineStrings. */
         export class MultiLineString extends RV.GEOMETRY.BaseGeometry {
             /** Constructs a MultiLineString from the given LineStrings or arrays of positions. */
@@ -635,6 +678,21 @@ export declare module RV {
             constructor(config: JSON);
             /** Returns the underlying layer type such as esriFeature, esriDynamic, and ogcWms. */
             getType(): string;
+            /** The viewer downloads data when needed - call this function to force a data download. The `data_added` event will trigger when the download is complete. */
+            fetchData(): void;
+            /** Layer definitions limit the information from a layer that gets displayed on the map and populated as data.
+             *
+             * @example
+             *
+             * ```js
+             * var layerDefs = [];
+             * layerDefs[5] = "STATE_NAME='Kansas'";
+             * layerDefs[4] = "STATE_NAME='Kansas' and POP2007>25000";
+             * layerDefs[3] = "STATE_NAME='Kansas' and POP2007>25000";
+             * dynamicMapServiceLayer.setLayerDefinitions(layerDefs);
+             * ```
+            */
+            setLayerDefinitions(layerDefinitions: Array<strings>): void;
 
             /**
              * This event is fired when the layers state changes.
