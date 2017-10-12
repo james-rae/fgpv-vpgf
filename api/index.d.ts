@@ -8,6 +8,8 @@
  * - Renamed LatLng and similar classes to XY
  * - Added `Polygon`, `MultiPolygon`, `Annotation`, `MultiAnnotation`, and `LinearRing` geometry types
  * - Added `fetchData` and `setLayerDefinitions` on `configLayer`
+ * - Added a `Popup` class to `RV.UI` available through `mapInstance.popup`
+ * - Added partial config loading on mapInstance
  *
  * #### September 15
  * - `RV.LAYER.LayerGroup` has been updated with new events and function definitions. Supports new `ConfigLayer` and `SimpleLayer` types.
@@ -102,6 +104,12 @@ export declare module RV {
         */
         constructor(mapDiv: HTMLElement, opts?: Object | JSON | string);
 
+        /** Loads a partial config snippet (schema validated). Does not load layers.
+         *
+         * @see {@link RV.LAYER.ConfigLayer}
+         */
+        loadConfig(config: JSON): void;
+
         /**
          * Contains UI related functionality.
          *
@@ -131,6 +139,7 @@ export declare module RV {
             panels: UI.PanelRegistry;
             legend: UI.LegendEntry;
             basemaps: UI.Basemap;
+            popup: UI.Popup;
         };
 
         /**
@@ -182,6 +191,28 @@ export declare module RV {
          * @property {Event.MouseEvent} event
          */
         click: Event;
+
+        /**
+         * This event is fired when the user double clicks on the map, but does not fire for double clicks on panels or other map controls.
+         * @event doubleclick
+         * @property {Event.MouseEvent} event
+         */
+        doubleclick: Event;
+
+        /**
+         * This event is fired when the user mouse downs over the map, but does not fire for movement over panels or other map controls.
+         * @event mousedown
+         * @property {Event.MouseEvent} event
+         */
+        mousedown: Event;
+
+        /**
+         * This event is fired when the user mouse ups over the map, but does not fire for movement over panels or other map controls.
+         * @event mouseup
+         * @property {Event.MouseEvent} event
+         */
+        mouseup: Event;
+
 
         /**
          * This event is fired when the users mouse moves over the map, but does not fire for movement over panels or other map controls.
@@ -636,17 +667,6 @@ export declare module RV {
          *
          * Note that `ConfigLayer` instances cannot control geometry.
          *
-         * #### Todo
-         *
-         * - Need to determine which functions we want to support here, and/or which functions we want to expose but not support:
-         *     - zoomToScale
-         *     - zoomToBoundary
-         *     - zoomToGraphic
-         *     - fetchGraphic
-         *     - symbologyStack
-         *     - catalogueUrl
-         *     - getSymbol
-         *
          * @example Create a ConfigLayer <br><br>
          *
          * ```js
@@ -678,6 +698,12 @@ export declare module RV {
             constructor(config: JSON);
             /** Returns the underlying layer type such as esriFeature, esriDynamic, and ogcWms. */
             getType(): string;
+            /** Zooms to the minimum layer scale */
+            zoomToScale(): void;
+            /** Pans to the layers bounding box */
+            panToBoundary(): void;
+            /** Returns the catalogue URL */
+            getCatalogueUrl(): string;
             /** The viewer downloads data when needed - call this function to force a data download. The `data_added` event will trigger when the download is complete. */
             fetchData(): void;
             /** Layer definitions limit the information from a layer that gets displayed on the map and populated as data.
@@ -692,7 +718,7 @@ export declare module RV {
              * dynamicMapServiceLayer.setLayerDefinitions(layerDefs);
              * ```
             */
-            setLayerDefinitions(layerDefinitions: Array<strings>): void;
+            setLayerDefinitions(layerDefinitions: Array<string>): void;
 
             /**
              * This event is fired when the layers state changes.
@@ -1007,6 +1033,32 @@ export declare module RV {
              * @property {Event.StoppableEvent} event
              */
             closing: EVENT.StoppableEvent;
+        }
+
+        export class Popup {
+            /** Opens a new popup in the viewer, closing one if open */
+            open(): void;
+            /** Closes the popup */
+            close(): void;
+            isOpen(): boolean;
+            /** Returns the dom node of the popup content. */
+            getContent(): Node;
+            /**
+             * You can provide a dom node to set as the popup content.
+             */
+            setContent(node: Node): void;
+
+            /**
+             * This event is fired when the popup is fully open.
+             * @event opened
+             */
+            opened: Event;
+
+            /**
+             * This event is fired when the popup is fully closed.
+             * @event closed
+             */
+            closed: Event;
         }
 
         /**
