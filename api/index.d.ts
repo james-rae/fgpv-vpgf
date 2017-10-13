@@ -1,82 +1,3 @@
-/**
- * ### What's new
- *
- * #### October 12
- * - Expanded documentation on creating and registering extentions
- * - Created 'map_added' event to `RV`
- * - Added `addListener` and `addListenerOnce` to RV for extension registration`
- * - Renamed LatLng and similar classes to XY
- * - Added `Polygon`, `MultiPolygon`, `Annotation`, `MultiAnnotation`, and `LinearRing` geometry types
- * - Added `fetchData` and `setLayerDefinitions` on `configLayer`
- * - Added a `Popup` class to `RV.UI` available through `mapInstance.popup`
- * - Added partial config loading on mapInstance
- *
- * #### September 15
- * - `RV.LAYER.LayerGroup` has been updated with new events and function definitions. Supports new `ConfigLayer` and `SimpleLayer` types.
- * - Merged `RV.GEOMETRY.LayerGeometry` into `RV.LAYER.SimpleLayer`. `RV.LAYER.ConfigLayer` will not have access to geometry.
- * - Merged `RV.LAYER.LayerData` into `RV.LAYER.BaseLayer` for easier access.
- * - `RV.LAYER.BaseLayer` now extends `MVCObject`
- * - Various documentation changes and examples added.
- *
- * #### September 14
- * - Added namespace `GEOMETRY` which houses, you guessed it, geometry related classes
- * - Added `ConfigLayer` and `SimpleLayer` to `RV.LAYER` namespace (still a WIP)
- *     - `ConfigLayer` is more or less a `LegendNode` in `legend-block.class.js`. It is created via JSON layer config snippets. Geometry changes (add/remove) are not supported.
- *     - `SimpleLayer` is created programmatically and allows for full geometry.
- *
- * @see {@link RV.LAYER}
- * @see {@link RV.GEOMETRY}
- *
- * *********
- *
- * This guide is intented for developers. It outlines the entire viewers API and provides examples throughout.
- *
- * In all but some trival cases, you'll want to use the API in something called an `extention`. An `extention` is a file(s) where you can write custom code that uses our API. There is no right or wrong way to write an extention - choose the approach that works best for you.
- *
- * We'll start by example - building an extention that allows you to toggle layer visibility through an external select box.
- *
- * ### Getting Started
- *
- * Let's create a new file named `layerSelector.js`. We'll jump right in and write some code, inside `layerSelector.js` type:
- *
- * ```js
- * RV.addListenerOnce('map_added', init);
- *
- * function init(mapInstance) {
- *  // empty for now
- * }
- * ```
- *
- * You don't want the extention code executing immediatly on load since the API may not be ready. Instead, you wait for a special event `map_added` which invokes your `init` function.
- *
- * @see {@link RV.Map} for more information on `mapInstance`
- *
- * ### Registering extention file
- *
- * The relative path to the `layerSelector.js` file goes inside the `rv-extentions` property of our map element.
- *
- * ```html
- * <div is="rv-map" rv-config="config.json" rv-extentions="js/layerSelector.js"></div>
- * ```
- *
- * Additional extentions can be added, separated by commas:
- *
- * ```html
- * <div id="map1" is="rv-map" rv-config="config.json" rv-extentions="js/layerSelector.js, http://www.example.com/js/anotherExtention.js"></div>
- * ```
- *
- * You can also skip using `rv-extentions` entirely and load the `layerSelector.js` directly after the viewers `rv-main.js` file.
- *
- * ```html
- * <script src="js/rv-main.js"></script>
- * <script src="js/layerSelector.js"></script>
- * ```
- *
- * If you go this route you should change the line `RV.addListenerOnce('map_added', init);` in `layerSelector.js` to `RV.addListener('map_added', init);` so that your extention is invoked for all viewer instances on the page, not just the first one.
- *
- *
- */
-
 export declare module RV {
 
     /**
@@ -163,8 +84,6 @@ export declare module RV {
         /** Changes the center of the map by the given distance in pixels. If the distance is less than both the width and height of the map, the transition will be smoothly animated.  */
         panBy(x: number, y: number) : void;
         getZoom(): number;
-        /** Returns the current Projection, based on currently active basemap projection. */
-        getProjection(): Projection;
         getDiv(): HTMLElement;
         getCenter(): RV.GEOMETRY.XY;
         getBounds(): RV.GEOMETRY.XYBounds;
@@ -222,25 +141,11 @@ export declare module RV {
         mousemove: Event;
 
         /**
-         * This event is fired when the map projection changes.
-         * @event projection_changed
-         * @property {Projection} projection
-         */
-        projection_changed: Event;
-
-        /**
          * This event is fired when the maps zoom level changes.
          * @event zoom_changed
          * @property {number} zoom
          */
         zoom_changed: Event;
-    }
-
-    export interface Projection {
-        /** Translates from the XY cylinder to the Point plane. This interface specifies a function which implements translation from given XY values to world coordinates on the map projection. The Maps API calls this method when it needs to plot locations on screen. Projection objects must implement this method. */
-        fromXYToPoint(xy: RV.GEOMETRY.XY, point?: RV.GEOMETRY.CoordinatePoint);
-        /** This interface specifies a function which implements translation from world coordinates on a map projection to XY values. The Maps API calls this method when it needs to translate actions on screen to positions on the map. Projection objects must implement this method. */
-        fromPointToXY(pixel: RV.GEOMETRY.CoordinatePoint, nowrap?: boolean);
     }
 
     /** The MVCObject constructor is guaranteed to be an empty function, and so you may inherit from MVCObject by simply writing `MySubclass.prototype = new google.maps.MVCObject();`. Unless otherwise noted, this is not true of other classes in the API, and inheriting from other classes in the API is not supported. */
@@ -527,17 +432,17 @@ export declare module RV {
      *
      * You can also create a `ConfigLayer` via the API by constructing it with a schema valid layer json object.
      *
-     * @see {@link RV.LAYER.ConfigLayer} examples <br><br>
+     * @see {@link RV.LAYER.ConfigLayer} examples
      *
      * #### SimpleLayer
      *
      * Must be created programatically through the API. Unlike `ConfigLayer`, `SimpleLayer` instances have API control of their geometry.
      *
-     * @see {@link RV.LAYER.SimpleLayer} examples <br><br>
+     * @see {@link RV.LAYER.SimpleLayer} examples
      *
      * #### LayerGroups & Layers
      *
-     * Layers will in most cases reside in a `LayerGroup` - a fancy version of an array with special properties and events to make handling many of them easier.
+     * Layers will in most cases reside in a `LayerGroup` - an array with special properties and events to make handling many of them easier.
      *
      * ```js
      * // lets create two layers with my magic wand
@@ -548,17 +453,7 @@ export declare module RV {
      * layerGroup1.add(myLayer1);
      * layerGroup1.add(myLayer2);
      * ```
-     * <br>
-     * Pretty boring so far. How about we open an external data table whenever a layer has data to show?
-     * <br><br>
-     * ```js
-     * layerGroup1.addListener('data_added', function(layer, data) {
-     *     magicDatatable.open(data);
-     * });
      *
-     * myLayer2.setData([{objectid: 1, title: 'A Title'}, {objectid: 2, title: 'Another Title'}]);
-     * ```
-     * <br>
      * #### Using layerGroups
      *
      * A `layerGroup` can define the list of available basemaps, layers on a map, or in a legend. Lets add a layer to the map and show it in the legend
@@ -579,7 +474,7 @@ export declare module RV {
      * $(legendDiv).html('Some text...');
      * specificLegendEntry.add(legendDiv);
      * ```
-     * <br>
+     *
      * The process is similar with basemaps.
      *
      */
@@ -940,8 +835,6 @@ export declare module RV {
             /** Returns true if this basemap is currently shown on the map. */
             isActive(): boolean;
             setActive(active: boolean): void;
-            /** Derived from the layer projections that compose this basemap. You cannot set a projection. */
-            getProjection(): Projection;
 
             /**
              * @event name_changed
@@ -1124,14 +1017,18 @@ export declare module RV {
     }
 
     /**
-     * Uses the `RV.Event` namespace. Handles event registration on MVCObjects and on DOM Nodes.
+     * Contains all event functionality and classes.
      *
-     * @example The following two statements are equivalent <br><br>
+     * The following two statements are equivalent:
      *
      * ```js
      * mapInstance.addListener('bounds_changed', function() {...});
-     * RV.Event.addListener(mapInstance, 'bounds_changed', function() {...});
+     * RV.EVENT.addListener(mapInstance, 'bounds_changed', function() {...});
      * ```
+     *
+     * Different event types are not available on all objects - for instance `mapInstance.addListenerOnce` is not valid, but you could instead write `RV.EVENT.addListenerOnce(mapInstance, ...);`
+     *
+     * Other functions such as `trigger` are mainly used by the viewer, but in advanced cases you may need to trigger events for the viewer to update.
      */
     export module EVENT {
         /** Cross browser event handler registration. This listener is removed by calling removeListener(handle) for the handle that is returned by this function. */
