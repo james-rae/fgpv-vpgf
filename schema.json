@@ -652,7 +652,7 @@
                     "minItems": 1
                 },
                 "layerType": { "type": "string", "enum": [ "ogcWms" ] },
-                "featureInfoMimeType": { "type": "string", "enum": [ "text/html;fgpv=summary", "text/html", "text/plain", "application/json" ], "description": "If specified indicates that GetFeatureInfo should be enabled for this WMS and indicates the format that should be requested." },
+                "featureInfoMimeType": { "type": "string", "enum": [ "text/html;fgpv=summary", "text/html", "text/plain", "application/json", "application/vnd.geo+json" ], "description": "If specified indicates that GetFeatureInfo should be enabled for this WMS and indicates the format that should be requested." },
                 "legendMimeType": { "type": "string", "enum": [ "image/png", "image/gif", "image/jpeg", "image/svg", "image/svg+xml" ], "description": "If specified indicates that GetLegendGraphic should be enabled for this WMS and indicates the format that should be requested.  FIXME check legendUrl for additional requirements" },
                 "extent": { "$ref": "#/definitions/extentWithReferenceNode" },
                 "controls": { "$ref": "#/definitions/legendEntryControls" },

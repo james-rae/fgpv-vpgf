@@ -10,11 +10,13 @@ const GEO = {
             OGC_WFS: 'ogcWfs'
         },
         Ogc: {
+            // TODO it appears the values of this map are not being used anywhere
             INFO_FORMAT_MAP: {
                 'text/html;fgpv=summary': 'HTML',
                 'text/html': 'HTML',
                 'text/plain': 'Text',
-                'application/json': 'EsriFeature'
+                'application/json': 'EsriFeature',
+                "application/vnd.geo+json": "EsriFeature"
             }
         },
         Esri: {
