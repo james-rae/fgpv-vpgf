@@ -445,6 +445,7 @@ function LegendElementFactory(
          * @return {Boolean} true if the remove control should be visible
          */
         get isVisible() {
+            console.log('super, auto, user', super.isVisible, ref.autoLegendEh, this.block.userAdded);
             return super.isVisible && (ref.autoLegendEh || this.block.userAdded);
         }
     }
